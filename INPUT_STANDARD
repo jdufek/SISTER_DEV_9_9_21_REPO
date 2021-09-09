@@ -1,0 +1,58 @@
+BASE_X (INTEGER):
+250
+BASE_Y (INTEGER):
+300
+BASE_Z (INTEGER):
+250
+WIDTH (REAL,METERS):
+50000.
+HEIGHT (REAL,METERS):
+60000.
+ZWIDTH (REAL,METERS):
+50000.
+FREQUENCY (INTEGER):
+FF
+DELTATIME (REAL, YEARS):
+500.
+TIMESTEPS (INTEGER):
+2000
+FREQUENCY OF WRITEOUT (INTEGER):
+20
+RANDOM SEED (NEGATIVE INTEGER):
+-8
+BASE CRUST (REAL, METERS):
+50000.
+Gradient (degrees/meter):
+-.050
+SILL THICKNESS (real, meters - pixels= SILL_THICKNESS/(HEIGHT/BASE_Y) ):
+1500.0
+SILL LENGTH (real, randomized, meters - pixels= SILL LENGTH/(WIDTH/BASE_X) ):
+5000.0
+PLUTONS, BASEMENT (bottom, REAL METERS)
+40000.0
+SUBVOLCANIC PLUTONS (bottom, REAL METERS)
+22000.0
+METAVOLCANICS, PLUTONS (bottom, REAL METERS)
+6000.0
+NEO-VOLCANICS, UPPER CRUST
+1000.0
+INJECT WIDTH X (REAL, METERS - region at base of crust where magma intrudes)
+14000.0
+INJECT WIDTH Z  (REAL, METERS - region at base of crust where magma intrudes)
+20000.0
+TECTONIC RATE (REAL,METERS/year)
+0.0
+TECTONIC REGION (meters)
+30000.0
+DIKE WIDTH (real, meters - pixels in dike= DIKE_WIDTH/(WIDTH/BASE_X) )
+500.0
+MAX INJECT HEIGHT (distance from surface were magma is excluded)
+0.0
+SEDIMENTATION WIDTH (REAL, METERS region at to crust that volcanics are added)
+5000.0
+ERUPTIVE FLUX (REAL, meters/yr)
+0.0
+Critical melt fraction for dike propagation
+0.4
+Focus Factor (larger than 1, this is an area ratio of melt that is concentrated from a projected area on the Moho)
+1.0

@@ -1,0 +1,8 @@
+ifort Sisters_BIN_2.f90 -convert big_endian -parallel -o melting.exe
+(using transfer_test2.sh as submission script currently)
+
+
+ifort Sisters_BIN_1.f90 -convert big_endian -parallel -o melting.exe
+ifort Melt_LDM3D_BIN.f90 -convert big_endian -parallel -o melting.exe
+
+fort Melt_LDM3D.f90 -O3 -parallel -opt-report-phase=par -opt-report:5 -o melting.ex

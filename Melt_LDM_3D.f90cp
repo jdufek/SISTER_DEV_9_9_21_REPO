@@ -1,0 +1,5036 @@
+ PROGRAM MM_2
+
+!------------------------------------------------------------------------!
+!THIS MODEL RUN WILL BE FOR BASALT AND AMPHIBOLITE COMPOSITIONS (11/29/2001)
+!THIS CODE IS MODIFIED FOR MARTIAN CONDITIONS
+!4/12/2006
+!_______________________________________________________________________!
+
+IMPLICIT NONE
+
+!DEFINE VARIABLES (MATERIAL PROPERTIES)
+DOUBLE PRECISION::INJECT_HEIGHT,UNCONSOLIDATED_SEDIMENT,INJECT_WIDTH,INJECT_WIDTHZ,bottom_mark,MID_CRUST,cpdike,cpCrock,cpCrock2,densitydike,densityCrock,kdike,kCrock,kCrock2,Latentdike,LatentCrock
+DOUBLE PRECISION::SED_REGION,SED_RATE,SRATE,SRATE_ADJUST,Height,WIDTH,WIDTHZ,summelt,summeltmafic,MeltDifference,relax
+DOUBLE PRECISION::DX,DZ,WIDTH_LC,TOTAL_MELT_LC,CRITICAL_MELT
+DOUBLE PRECISION::M_VOLUME,S_VOLUME,x,xx
+INTEGER::SILL_P2,randomM,randomZ
+DOUBLE PRECISION::TOTAL_TEMP,COUNTER
+!Grid variables
+
+LOGICAL::JUNK
+INTEGER::SedZone,SedWidth,rand4,DikeWidth,rand5,endtime,RR,rand6,rand7,FREQUENCYADJUST1,INTRUSION
+INTEGER::rand1,rand2,rand3,baseelement,edge,edgeelement,X1,X2,Y1,Y2,randomL,FREQUENCY,FREQUENCYADJUST
+DOUBLE PRECISION::INT_TEMP,random_switch,basestart,edgestart,elementstarter,SLOPE,Yintercept,DikeTemp,FSLOPEDIKER,FSLOPECROCKER,FSLOPECROCKER1,FSLOPECROCKER2
+DOUBLE PRECISION::deltaX,deltaY,deltaTime,Difference,FreezeDike,MeltDike,FreezeDikeC,MeltDikeC,FreezeCrock,MeltCrock,area1,area2,MeltCrock1,MeltCrock2,FreezeCrock1,FreezeCrock2
+DOUBLE PRECISION::A,B,C,INVFUNC_T,deltaZ,area3,basestartZ
+DOUBLE PRECISION::FreezeCrock3,FreezeCrock4,FreezeCrock5,FreezeCrock6,FreezeCrock11
+DOUBLE PRECISION::MeltCrock3,MeltCrock4,MeltCrock5,MeltCrock6,MeltCrock11
+DOUBLE PRECISION::FSLOPECROCKER3,FSLOPECROCKER4,FSLOPECROCKER5,FSLOPECROCKER6,FSLOPECROCKER11
+DOUBLE PRECISION::BASEMENT_PLUTONS,SUBVOLCANIC_PLUTONS,META_VOLCANICS,NEO_VOLCANICS
+DOUBLE PRECISION::term1,term2,term3,term4, y
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:)::W,E,N,S,Binitial,WEST,EAST,NORTH,SOUTH,P_X,Q_X,Ttop,Tbot,d_X,C_X,P_Y,Q_Y,d_Y,C_Y
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:)::P_Z,Q_Z,D_Z,C_Z
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:,:,:)::alphaZ,oldA,newA,Temp,oldtime,newtime,kcond,cp,density,alpha,beta,betaZ,alphaX,betaX,ap0,halftemp
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:,:,:)::MELT_ZR,PRESSURE,MELT_SIO2,MELT_AL2O3,MELT_CAO,MELT_NA2O,MELT_K2O,MELT_H2O,VOLUMECHANGE,DENSITYOLD,MU,COMPRESS,PRESSURECHANGE
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:,:,:)::MeltFracDikeN1,MeltFracDikeN2,MeltFracDikeN3,Sp,Su,MinDistance,oldAC,newAC,TempC
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:,:,:)::MeltFracCrockN1,MeltFracCrockN2,MeltFracCrockN3,Distance,MeltFracCrockN1C,MeltFracDikeN1C
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:,:,:)::MeltFracMafic,MeltFracCrust,MeltFracCrockN2C,MeltFracCrockN3C,MeltFracDikeN2C,MeltFracDikeN3C,MAXTEMP
+
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:,:,:)::Melt1,Melt2,Melt3,Melt4,Melt5,Melt6,Melt11
+
+DOUBLE PRECISION,DIMENSION(300)::Temp1D,TempInitial1D,alpha1D,beta1D,d1D,P1D,Q1D,Temp1DB,TempInitial1DB,conductivity
+DOUBLE PRECISION,DIMENSION(300)::cp1D,density1D,ap01D
+DOUBLE PRECISION::deltaY1D,Ttop1D,Tbot1D,SUM,Bterm,Mterm,baseend,BtermZ,MtermZ,baseendZ,INJECTZONE,INJECTZONEZ
+
+
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:):: D0, Cp0, k0
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:,:,:):: oldTemp
+INTEGER,ALLOCATABLE,DIMENSION(:):: test
+
+CHARACTER(10):: date,time2,zone
+
+INTEGER,ALLOCATABLE,DIMENSION(:,:,:)::MaterialSwitch_B,MaterialSwitchC_B,MaterialSwitch,MaterialSwitchC
+!1=country rock, 2=dike
+INTEGER::I,J,K,L,BASE_Y,BASE_X,BASE_Z,IterationCount,ZZ,M,TIMESTEPS,Widther,kstep
+DOUBLE PRECISION,DIMENSION(10)::fslopedike,fslopecrock,DikeInterv,CrockInterv,DikeMF
+DOUBLE PRECISION::TotalSMelt,TotalMMelt,TotalMelt1,TotalMelt2,TotalMelt3,TotalMelt4,TotalMelt5,TotalMelt6,TotalMelt11
+DOUBLE PRECISION::TotalEruptMelt1,TotalEruptMelt2,TotalEruptMelt3,TotalEruptMelt4,TotalEruptMelt5,TotalEruptMelt6,TotalEruptMelt11
+DOUBLE PRECISION::alphaXX,betaXX,aPzero,FLUX,length,Volume,Volume_flux_avg
+LOGICAL::SILL_CONDITION
+INTEGER::SILL_P1,SILL_HEIGHT,randomX
+DOUBLE PRECISION,DIMENSION(300)::MaterialSwitch1D,Sp1D,Su1D,MeltFracDikeN11D,MeltFracDikeN21D,MeltFracDikeN31D
+DOUBLE PRECISION,DIMENSION(300)::MeltFracCrockN11D,MeltFracCrockN21D,MeltFracCrockN31D
+DOUBLE PRECISION::relax1,BASE_CRUST
+DOUBLE PRECISION::slopebreakdike
+INTEGER,DIMENSION(8)::time_array,time_array2
+REAL::ELLAPSED_TIME
+INTEGER::SILL_WIDTH,PDIKE,dikeshift,random_seed,FREQ_WRITEOUT,ErrorCount,II,JJ,KK,magmagradient,ONED,depthi,depthf,depthy,deptha,depthb,horiza,dikelocation
+DOUBLEPRECISION::Residual1,Residual2,ConvergeCheck,gradient
+DOUBLEPRECISION::MinOverallDistance,SumDistance,AvgDistance,AreaInterface
+CHARACTER::DUMMY_CHAR
+DOUBLE PRECISION::TECTONIC_REGION,TECTONIC_REGIONZ,TECTONIC_RATE,DIKE_WIDTH,DIKE_LENGTH,SILL_THICKNESS,SILL_LENGTH
+INTEGER::TectonicZone,TectonicZoneZ,TectonicWidth
+DOUBLE PRECISION::TRATE,TRATE_ADJUST
+DOUBLE PRECISION::ratio1,ratio2,flux1
+
+DOUBLE PRECISION:: qm, qs, H0, LL, dy, rho_mantle, rho_metased, rho_sed, rho_melt_crock, rho_melt_crock2, rho_solid_crock, rho_solid_crock2, rho_melt_basalt, rho_solid_basalt,rho_amphibolite
+
+DOUBLE PRECISION:: k_mantle, k_amphibolite, k_dike, k_metased, k_sed, k_melt_crock,k_solid_crock, k_melt_crock2,k_solid_crock2, k_melt_basalt, k_solid_basalt, cp_amphibolite, cp_dike, cp_metased, cp_sed, cp_solid_crock, cp_melt_crock, cp_solid_crock2, cp_melt_crock2, cp_melt_basalt, cp_solid_basalt
+
+
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:):: rho
+
+REAL:: tempproxy
+REAL :: s0 = 500, Rd0 = 5000, U = 10, c1, c2, Dif, XH2O, T, fxtl, Zrmelt,V,WW, Rd, ss, MajOx(5)!, param_col(nt,8)
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:,:,:)::Zrsat,ZrsatDif,TOTAL_MELT
+DOUBLE PRECISION,ALLOCATABLE,DIMENSION(:,:)::MELT_SIO2_2D,MELT_AL2O3_2D,MELT_CAO_2D,MELT_NA2O_2D,MELT_K2O_2D,MELT_H2O_2D,MELT_TEMP_2D,MELT_FRAC_2D,DENSITY_2D,PRESSURE_2D,VOLUMECHANGE_2D,MELT_ZR_2D,ZrsatDif_2D,MU_2D,PRESSURECHANGE_2D
+REAL::MajOxAt(5),Mmass(5),ncat(5)
+REAL::MM
+INTEGER::CC
+
+!OPEN INPUT FILE, AND READ CONDITIONS - 
+!THE ORDER OF VARIABLES ARE:
+!NODES IN HORIZONTAL DIRECTION, BASE_X
+!NODES IN VERTICAL DIRECITON, BASE_Y
+!LENGTH OF DOMAIN, WIDTH (IN METERS)
+!HEIGHT OF DOMAIN, HEIGHT (IN METERS)
+!FREQUENCY OF MAGMA INPUT (INTEGER)
+!DT (YEARS)
+
+OPEN(40000,FILE='ELLAPSED_TIME')
+OPEN(1111,FILE='TRATE')
+OPEN(10001,FILE='RAND_CHECK')
+OPEN(10002,FILE='VAR_CHECK')
+OPEN(10003,FILE='LOOP_CHECK')
+OPEN(10005,FILE='SILL_CHECK')
+call date_and_time (date,time2,zone,time_array)
+
+
+OPEN(999909,FILE='GEOTHERM_SIDE')
+OPEN(1000,FILE='INPUT')
+OPEN(1001,FILE='BASE_X')
+OPEN(1002,FILE='BASE_Y')
+OPEN(1003,FILE='WIDTH')
+OPEN(1004,FILE='HEIGHT')
+OPEN(1005,FILE='FREQUENCY')
+OPEN(1006,FILE='DELTATIME')
+OPEN(1007,FILE='DUMMY_CHAR')
+OPEN(1008,FILE='FREQ_WRITEOUT')
+OPEN(1010,FILE='N_TIMESTEPS')
+OPEN(1100,FILE='EXTENSION_THICKENING')
+OPEN(1101,FILE='AVG_FLUX')
+OPEN(11011,FILE='FLUX_TIME')
+OPEN(1102,FILE='CHECK_RATE')
+OPEN(1103,FILE='DIKE_RESOLUTION')
+OPEN(1104,FILE='SILL_RESOLUTION')
+OPEN(111001,FILE='TotalMelt1')
+OPEN(111002,FILE='TotalMelt2')
+OPEN(111003,FILE='TotalMelt3')
+OPEN(111004,FILE='TotalMelt4')
+OPEN(111005,FILE='TotalMelt5')
+OPEN(111006,FILE='TotalMelt6')
+OPEN(111011,FILE='TotalMelt11')
+
+OPEN(211001,FILE='Melt1',form='unformatted')
+OPEN(211002,FILE='Melt2',form='unformatted')
+OPEN(211003,FILE='Melt3',form='unformatted')
+OPEN(211004,FILE='Melt4',form='unformatted')
+OPEN(211005,FILE='Melt5',form='unformatted')
+OPEN(211006,FILE='Melt6',form='unformatted')
+OPEN(211011,FILE='Melt11',form='unformatted')
+OPEN(211012,FILE='MELT_FRACTION',form='unformatted')
+
+OPEN(311001,FILE='TotalEruptMelt1')
+OPEN(311002,FILE='TotalEruptMelt2')
+OPEN(311003,FILE='TotalEruptMelt3')
+OPEN(311004,FILE='TotalEruptMelt4')
+OPEN(311005,FILE='TotalEruptMelt5')
+OPEN(311006,FILE='TotalEruptMelt6')
+OPEN(311011,FILE='TotalEruptMelt11')
+
+
+
+OPEN(400001,FILE='HEAT_FLOW')
+
+REWIND(1000)
+
+READ(1000,400) DUMMY_CHAR
+READ(1000,200) BASE_X
+READ(1000,400) DUMMY_CHAR
+READ(1000,200) BASE_Y
+READ(1000,400) DUMMY_CHAR
+READ(1000,200) BASE_Z
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) WIDTH
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) HEIGHT
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) WIDTHZ
+READ(1000,400) DUMMY_CHAR
+READ(1000,200) FREQUENCY
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) DeltaTime
+READ(1000,400) DUMMY_CHAR
+READ(1000,200) TIMESTEPS
+READ(1000,400) DUMMY_CHAR
+READ(1000,200) FREQ_WRITEOUT
+READ(1000,400) DUMMY_CHAR
+READ(1000,200) random_seed
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) BASE_CRUST
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) gradient
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) SILL_THICKNESS
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) SILL_LENGTH
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) BASEMENT_PLUTONS
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) SUBVOLCANIC_PLUTONS
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) META_VOLCANICS
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) NEO_VOLCANICS
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) INJECT_WIDTH
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) INJECT_WIDTHZ
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) TECTONIC_RATE
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) TECTONIC_REGION
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) DIKE_WIDTH
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) INJECT_HEIGHT
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) SED_REGION
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) SED_RATE
+READ(1000,400) DUMMY_CHAR
+READ(1000,300) CRITICAL_MELT
+
+
+DeltaTime=DeltaTime*86400.0*365.0
+
+WRITE(1001,200) BASE_X
+WRITE(1002,200) BASE_Y
+WRITE(1003,300) WIDTH
+WRITE(1004,300) HEIGHT
+WRITE(1005,200) FREQUENCY
+WRITE(1006,300) DeltaTime
+WRITE(1008,200) FREQ_WRITEOUT
+WRITE(1010,200) TIMESTEPS
+WRITE(1102,300) TECTONIC_RATE
+
+
+TECTONIC_RATE=TECTONIC_RATE/(365.0*24.0*60.0*60.0)
+SED_RATE=SED_RATE/(365.0*24.0*60.0*60.0)
+
+PDIKE=INT(DIKE_WIDTH)/(INT(WIDTH)/BASE_X)
+WRITE(1103,*)DIKE_WIDTH,INT(WIDTH)/BASE_X,PDIKE
+
+SILL_WIDTH=INT(SILL_THICKNESS)/(INT(HEIGHT)/BASE_Y)
+SILL_P1=INT(SILL_LENGTH)/(INT(WIDTH)/BASE_X)
+WRITE(1104,*)SILL_THICKNESS,INT(HEIGHT)/BASE_Y,SILL_WIDTH,SILL_LENGTH,INT(WIDTH)/BASE_X,SILL_P1
+
+
+magmagradient=50
+
+ALLOCATE(W(BASE_Y))
+ALLOCATE(E(BASE_Y))
+ALLOCATE(N(BASE_Y))
+ALLOCATE(S(BASE_Y))
+ALLOCATE(Binitial(BASE_X))
+ALLOCATE(WEST(BASE_Y))
+ALLOCATE(EAST(BASE_Y))
+ALLOCATE(NORTH(BASE_Y))
+ALLOCATE(SOUTH(BASE_Y))
+ALLOCATE(P_X(BASE_X))
+ALLOCATE(Q_X(BASE_X))
+ALLOCATE(P_Y(BASE_Y))
+ALLOCATE(Q_Y(BASE_Y))
+ALLOCATE(P_Z(BASE_Z))
+ALLOCATE(Q_Z(BASE_Z))
+ALLOCATE(Ttop(BASE_X))
+ALLOCATE(Tbot(BASE_X))
+ALLOCATE(d_X(BASE_X))
+ALLOCATE(C_X(BASE_X))
+ALLOCATE(d_Y(BASE_Y))
+ALLOCATE(C_Y(BASE_Y))
+ALLOCATE(d_Z(BASE_Z))
+ALLOCATE(C_Z(BASE_Z))
+
+ALLOCATE(TOTAL_MELT(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Zrsat(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MELT_SIO2(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MELT_AL2O3(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MELT_CAO(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MELT_NA2O(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MELT_K2O(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MELT_H2O(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(PRESSURE(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(COMPRESS(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MELT_ZR(BASE_X,BASE_Y,BASE_Z))
+
+ALLOCATE(MELT_SIO2_2D(BASE_X,BASE_Y))
+ALLOCATE(MELT_AL2O3_2D(BASE_X,BASE_Y))
+ALLOCATE(MELT_CAO_2D(BASE_X,BASE_Y))
+ALLOCATE(MELT_NA2O_2D(BASE_X,BASE_Y))
+ALLOCATE(MELT_K2O_2D(BASE_X,BASE_Y))
+ALLOCATE(MELT_H2O_2D(BASE_X,BASE_Y))
+ALLOCATE(MELT_TEMP_2D(BASE_X,BASE_Y))
+ALLOCATE(MELT_FRAC_2D(BASE_X,BASE_Y))
+ALLOCATE(DENSITY_2D(BASE_X,BASE_Y))
+ALLOCATE(PRESSURE_2D(BASE_X,BASE_Y))
+ALLOCATE(VOLUMECHANGE_2D(BASE_X,BASE_Y))
+ALLOCATE(PRESSURECHANGE_2D(BASE_X,BASE_Y))
+
+ALLOCATE(MU_2D(BASE_X,BASE_Y))
+ALLOCATE(MELT_ZR_2D(BASE_X,BASE_Y))
+ALLOCATE(ZrsatDif_2D(BASE_X,BASE_Y))
+
+ALLOCATE(Melt1(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Melt2(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Melt3(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Melt4(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Melt5(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Melt6(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Melt11(BASE_X,BASE_Y,BASE_Z))
+
+
+ALLOCATE(MAXTEMP(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(oldA(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(newA(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Temp(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(oldtime(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(newtime(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(kcond(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(cp(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(density(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(alpha(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(beta(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(alphaX(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(betaX(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(alphaZ(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(betaZ(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(VOLUMECHANGE(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(PRESSURECHANGE(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MU(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(DENSITYOLD(BASE_X,BASE_Y,BASE_Z))
+
+ALLOCATE(ap0(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(halftemp(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracDikeN1(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracDikeN2(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracDikeN3(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Sp(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Su(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Mindistance(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(oldAC(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(newAC(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(TempC(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracCrockN1(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracCrockN2(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracCrockN3(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(Distance(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracCrockN1C(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracDikeN1C(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracCrockN2C(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracDikeN2C(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracCrockN3C(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracDikeN3C(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MaterialSwitch(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MaterialSwitchC(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MaterialSwitch_B(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MaterialSwitchC_B(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracCrust(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(MeltFracMafic(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(ZrsatDif(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(oldTemp(BASE_X,BASE_Y,BASE_Z))
+ALLOCATE(D0(BASE_Y))
+ALLOCATE(Cp0(BASE_Y))
+ALLOCATE(k0(BASE_Y))
+ALLOCATE(rho(BASE_Y))
+ALLOCATE(test(BASE_X))
+
+Open(11,File='TEMP',form='unformatted')
+OPEN(12,File='FREQ_CHECK')
+Open(61,File='MAFIC_MELT',form='unformatted')
+OPEN(4,File='temp_prof')
+OPEN(11111,File='temp_deptha')
+OPEN(11112,FILE='temp_depthb')
+OPEN(11113,FILE='temp_horiza')
+OPEN(49999,FILE='MELT_SIO2',form='unformatted')
+OPEN(50000,FILE='MELT_AL2O3',form='unformatted')
+OPEN(50001,FILE='MELT_CAO',form='unformatted')
+OPEN(50002,FILE='MELT_NA2O',form='unformatted')
+OPEN(50003,FILE='MELT_K2O',form='unformatted')
+OPEN(50004,FILE='MELT_H2O',form='unformatted')
+OPEN(50005,FILE='Zrsat',form='unformatted')
+OPEN(50006,FILE='MELT_ZR',form='unformatted')
+OPEN(50007,FILE='ZrsatDif',form='unformatted')
+
+OPEN(69999,FILE='MELT_SIO2_2D',form='unformatted')
+OPEN(70000,FILE='MELT_AL2O3_2D',form='unformatted')
+OPEN(70001,FILE='MELT_CAO_2D',form='unformatted')
+OPEN(70002,FILE='MELT_NA2O_2D',form='unformatted')
+OPEN(70003,FILE='MELT_K2O_2D',form='unformatted')
+OPEN(70004,FILE='MELT_H2O_2D',form='unformatted')
+OPEN(70005,FILE='MELT_TEMP_2D',form='unformatted')
+OPEN(70006,FILE='MELT_FRAC_2D',form='unformatted')
+OPEN(70007,FILE='DENSITY_2D',form='unformatted')
+OPEN(70008,FILE='PRESSURE',form='unformatted')
+OPEN(70009,FILE='PRESSURE_2D',form='unformatted')
+OPEN(70010,FILE='DENSITY',form='unformatted')
+OPEN(70011,FILE='MELT_ZR_2D',form='unformatted')
+OPEN(70012,FILE='ZrsatDif_2D',form='unformatted')
+OPEN(70013,FILE='VOLUMECHANGE',form='unformatted')
+OPEN(70014,FILE='VOLUMECHANGE_2D',form='unformatted')
+OPEN(70015,FILE='PRESSURECHANGE',form='unformatted')
+OPEN(70016,FILE='PRESSURECHANGE_2D',form='unformatted')
+OPEN(70017,FILE='MU',form='unformatted')
+OPEN(70018,FILE='MU_2D',form='unformatted')
+
+
+
+OPEN(169999,FILE='MELT_SIO2_2Dcut')
+OPEN(170000,FILE='MELT_AL2O3_2Dcut')
+OPEN(170001,FILE='MELT_CAO_2Dcut')
+OPEN(170002,FILE='MELT_NA2O_2Dcut')
+OPEN(170003,FILE='MELT_K2O_2Dcut')
+OPEN(170004,FILE='MELT_H2O_2Dcut')
+OPEN(170005,FILE='MELT_TEMP_2Dcut')
+OPEN(170006,FILE='MELT_FRAC_2Dcut')
+OPEN(170007,FILE='DENSITY_2Dcut')
+OPEN(170009,FILE='PRESSURE_2Dcut')
+OPEN(170010,FILE='VOLUMECHANGE_2Dcut')
+OPEN(170011,FILE='PRESSURECHANGE_2Dcut')
+OPEN(170012,FILE='MU_2Dcut')
+OPEN(170013,FILE='COMPRESS_2Dcut')
+
+
+Open(111,File='COMPOSITION')
+Open(112,File='COMPOSITION_CHECK')
+Open(1122,File='Location_check')
+Open(1123,File='errordike_check')
+Open(113,File='Composition_b')
+Open(114,File='Composition_d')
+Open(115,File='Composition_a')
+Open(1144,File='Comp_ZZ')
+!OPEN(601,File='DENSITY')
+OPEN(602,File='HEAT_CAPACITY')
+OPEN(603,File='CONDUCTIVITY')
+
+
+
+Open(161,File='CRUSTAL_MELT')
+
+Open(211,File='MM1')
+
+Open(261,File='SS1')
+
+Open(311,File='TotalMMMelt')
+Open(312,File='TotalSSMelt')
+
+Open(497,File='TotalSMelt')
+Open(498,File='TotalMMelt')
+Open(499,File='TotalSMeltStart')
+Open(500,File='TotalMMeltStart')
+Open(501,File='TotalM')
+Open(502,File='FLUX')
+Open(503,File='TempCheck')
+Open(504,File='mindistance')
+Open(505,File='avgdistance')
+Open(506,File='areainterface')
+
+OPEN(9999,FILE='MAXTEMP_2')
+OPEN(1001,FILE='MAXTEMP_1')
+
+OPEN(10000,FILE='TIMESTEPS')
+OPEN(99999,FILE='CHECK_INTRUSION')
+OPEN(20001,FILE='MAGMATIC_EXTENSION')
+OPEN(20002,FILE='MAGMATIC_THICKENING')
+
+OPEN(13,FILE='Melt_frac_check')
+OPEN(781,FILE='Density_check')
+
+OPEN(7991,FILE='S_VOLUME')
+OPEN(7992,FILE='M_VOLUME')
+OPEN(7993,FILE='S_FLUX_AVG')
+OPEN(7994,FILE='M_FLUX_AVG')
+
+S_VOLUME=0.0
+M_VOLUME=0.0
+
+FLUX=0.0
+
+rand1=random_seed-43
+rand2=random_seed-11
+rand3=random_seed-23
+rand4=random_seed-54
+rand5=random_seed-23
+rand6=random_seed-rand3
+rand7=random_seed-rand1
+
+
+!write(10001,*)ran2(rand1),ran2(rand2),ran2(rand3)
+
+
+! dry basalt
+relax=1.0
+relax1=1.0
+DikeWidth=10
+DikeTemp=1238.0
+
+IterationCount=0
+kdike=2.2
+cpdike=1100
+
+kCrock=3.6
+cpCrock=1100
+
+kCrock2=3.0
+cpCrock2=1100
+
+
+!spatial configuration
+deltaX=Width/REAL(BASE_X)
+deltaY=Height/REAL(BASE_Y)
+deltaZ=WidthZ/REAL(BASE_Z)
+area1=deltaX*deltaZ
+area2=deltaY*deltaZ
+area3=deltaX*deltaY
+
+
+ratio1= (deltaX*BASE_CRUST/2.0)/((deltaX*BASE_CRUST/2.0)+(REAL(SILL_P1)*REAL(SILL_WIDTH)*deltaX*deltaY))
+ratio2= (REAL(SILL_P1)*REAL(SILL_WIDTH)*deltaX*deltaY)/((deltaX*BASE_CRUST/2.0)+(REAL(SILL_P1)*REAL(SILL_WIDTH)*deltaX*deltaY))
+flux1= (((REAL(SILL_P1)*REAL(SILL_WIDTH))+(((BASE_CRUST-INJECT_HEIGHT)/deltaY)*1.0))*(deltaX*deltaY))*(REAL(TIMESTEPS)&
+     /(REAL(FREQUENCY)))/((REAL(TIMESTEPS)*DELTATIME/(86400.0*365.))*INJECT_WIDTH)
+
+
+WRITE(1100,300) (deltaX*BASE_CRUST/2.0)/(REAL(SILL_P1)*REAL(SILL_WIDTH)*deltaX*deltaY)   !extension_thickening
+WRITE(1101,300) flux1
+
+
+WRITE(20001,300) ratio1*flux1
+    
+WRITE(20002,300) ratio2*flux1
+
+
+!melting properties of both materials
+Latentdike=4.0e5
+LatentCrock=4.0e5
+
+
+! basalt 1.5% water
+FreezeDikeC=650.0
+MeltDikeC=1167.0
+FreezeDike=650.
+MeltDike=1167.
+DikeTemp=1300. !MeltDike
+
+!! basalt 5.6% water
+!FreezeDikeC=623.0
+!MeltDikeC=1393.
+!FreezeDike=623.
+!MeltDike=1393.
+
+
+
+! Lower Crust- Amphibolite layer
+FreezeCrock1=820.0 !2000. !820.0!825.0
+MeltCrock1=1220. !1100. !4000. !1220.0
+FSLOPECROCKER1=1.0/(MeltCrock1-FreezeCrock1)
+!FSLOPEDIKER=1.00/(1275.0-1075.0)
+
+!Material Switch 3
+MeltCrock3=1280. !1010.0
+FreezeCrock3=1080. !920.0    
+FSLOPECROCKER3=1./(MeltCrock3-FreezeCrock3)
+
+
+!Material Switch 4
+MeltCrock4=1245. !1010.0
+FreezeCrock4=1136. !920.0    
+FSLOPECROCKER4=1./(MeltCrock4-FreezeCrock4)
+
+
+!Material Switch 5
+MeltCrock5=1280. !1010.0
+FreezeCrock5=1080. !920.0    
+FSLOPECROCKER5=1./(MeltCrock5-FreezeCrock5)
+
+!Material Switch 6
+MeltCrock6=1175. !1280. !1010.0
+FreezeCrock6=950. !1080. !920.0    
+FSLOPECROCKER6=1./(MeltCrock6-FreezeCrock6)
+
+!Material Switch 11
+MeltCrock11=1152. !1280. !1010.0
+FreezeCrock11=760. !1080. !920.0    
+FSLOPECROCKER11=1./(MeltCrock11-FreezeCrock11)
+
+
+
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+  MeltFracDikeN1(I,J,K)=0.0
+  MeltFracDikeN2(I,J,K)=0.0
+  MeltFracDikeN3(I,J,K)=0.0
+  MeltFracCrockN1(I,J,K)=0.0
+  MeltFracCrockN2(I,J,K)=0.0
+  MeltFracCrockN3(I,J,K)=0.0
+  END DO
+ END DO
+END DO
+
+
+
+!T=650-700
+fslopedike(1)=0.0028
+DikeInterv(1)=650.
+DikeMF(1)=0.0
+
+
+!T=700-980
+fslopedike(2)=0.000830681
+DikeInterv(2)=700.
+DikeMF(2)=0.142
+
+!T=980-1100
+fslopedike(3)=0.0045920635
+DikeInterv(3)=980
+DikeMF(3)=.411
+
+!T=1100-1167
+fslopedike(4)=0.00115169
+DikeInterv(4)=1100
+DikeMF(4)=.923
+
+
+
+!--------------- Introduce crustal and material properties ------------------!
+!--------- Initial properties are from Turcotte and Schubert (2002) ---------! 
+!--- Parameter versus temperature relationships are from Nabelek et al. (2010) ---!
+
+
+LL=10000.0 ! depth of radiogenic concentration
+H0=8.5e-10   ! radiogenic heat production
+qs=-65e-3!-75e-3  ! surface heat flux
+
+
+! Initial properties
+k_mantle=3.0  !2.1   ! from Turcotte and Schubert
+k_amphibolite=3.0     !2.3 !attim
+k_metased=3.6    !2.6  !2.6
+k_sed=3.6          !3.0      !3.0
+
+
+cp_dike=1100 !1480  ! from annen et al 2006.
+cp_amphibolite=1100 !1430 !attim
+cp_metased=1100 !1390
+cp_sed=1100 !1370
+
+rho_mantle=3100.0 ! (Fuis et al., 1984) 
+rho_amphibolite=3000.0
+rho_metased=2550.0
+rho_sed=2300.0
+
+
+! Mixture properties
+
+rho_melt_basalt=2750.0
+rho_solid_basalt=rho_mantle
+rho_melt_crock=2700.0
+rho_solid_crock=rho_amphibolite
+rho_melt_crock2=2250.0
+rho_solid_crock2=rho_metased
+
+k_melt_basalt=2.2
+k_solid_basalt=k_mantle
+k_melt_crock=2.6    !2.6   
+k_solid_crock=k_amphibolite ! change.
+k_melt_crock2=2.6   !2.6   
+k_solid_crock2=k_metased ! change.
+
+cp_melt_basalt=1100 !1484   ! Gelman etal, 2013
+cp_solid_basalt=cp_dike
+cp_melt_crock=1100 !1000
+cp_solid_crock=cp_amphibolite
+cp_melt_crock2=1100 !1000
+cp_solid_crock2=cp_metased
+
+
+DO J=1,int((HEIGHT-BASE_CRUST)/(HEIGHT/BASE_Y))
+rho(J)=rho_mantle   !upper mantle
+k0(J)=k_mantle
+cp0(J)=cp_dike
+END DO
+
+DO J=int((HEIGHT-BASE_CRUST)/(HEIGHT/BASE_Y)),int((HEIGHT-BASEMENT_PLUTONS)/(HEIGHT/BASE_Y))
+rho(J)=rho_amphibolite !lower crust, amphibolite.
+k0(J)=k_amphibolite
+cp0(J)=cp_amphibolite
+END DO
+
+DO J=int((HEIGHT-BASEMENT_PLUTONS)/(HEIGHT/BASE_Y)), int((HEIGHT-SUBVOLCANIC_PLUTONS)/(HEIGHT/BASE_Y))
+rho(J)=rho_metased !metasedimentary layer (Fuis et al., 1984)
+k0(J)=k_metased
+cp0(J)=cp_metased
+END DO
+
+DO J=int((HEIGHT-SUBVOLCANIC_PLUTONS)/(HEIGHT/BASE_Y)),BASE_Y
+rho(J)=rho_sed     !unconsolidated sediments (Fuis et al., 1984)
+k0(J)=k_sed
+cp0(J)=cp_sed
+END DO
+
+! calculate the initial mantle heat flux using the initial surface heat flux to
+! use in geotherm
+qm=qs+(rho_sed*H0*NEO_VOLCANICS)+(rho_metased*H0*(LL-NEO_VOLCANICS))
+
+
+DO I=1,BASE_X
+DO J=1,BASE_Y
+DO K=1,BASE_Z
+
+
+!Initialize Composition Values
+MELT_SIO2(I,J,K)=0.0
+MELT_AL2O3(I,J,K)=0.0
+MELT_CAO(I,J,K)=0.0
+MELT_NA2O(I,J,K)=0.0
+MELT_K2O(I,J,K)=0.0
+MELT_H2O(I,J,K)=0.0
+Zrsat(I,J,K)=0.0
+ZrsatDif(I,J,K)=-200.0
+TOTAL_MELT(I,J,K)=0.0
+PRESSURE(I,J,K)=0.0
+MELT_ZR(I,J,K)=0.0
+
+y=REAL(J)*deltaY
+term1=rho(J)*LL*LL*H0*exp(-1.*(HEIGHT-y)/LL)/k0(J)    !(16000.0**2)*2900.0*6.22e-10/k0(J)
+term2=qm*(HEIGHT-y)/k0(J)    !(16000.0**2)*2900.0*6.22e-10*exp(-1.*(60000.-REAL(J)*DELTAY)/16000.)/k0(J)
+term3=rho(J)*LL*H0*exp(-BASE_CRUST/LL)*(HEIGHT-y)/k0(J)    !(gradient+(2900.0*6.22e-10*16000.0))/k0(J)*(60000.-REAL(J)*DELTAY)
+term4=rho(J)*LL*LL*H0/k0(J)
+
+
+W(J)=-term1-term2-term3+term4!-1.0*deltaY*gradient*REAL(J)+gradient*HEIGHT!Tbot1D+!1500.0*deltaY*10.0*(-1.0*gradient)
+E(J)=-term1-term2-term3+term4!-1.0*deltaY*gradient*REAL(J)+gradient*HEIGHT!Tbot1D+!1500.0*deltaY*10.0*(-1.0*gradient)
+oldA(I,J,K)=-term1-term2-term3+term4!-1.0*deltaY*gradient*REAL(J)+gradient*HEIGHT!Tbot1D+!1500.0*deltaY*10.0*(-1.0*gradient)
+Temp(I,J,K)=-term1-term2-term3+term4!-1.0*deltaY*gradient*REAL(J)+gradient*HEIGHT!Tbot1D+300.1500.0*deltaY*10.0*(-1.0*gradient)
+newA(I,J,K)=-term1-term2-term3+term4!-1.0*deltaY*gradient*REAL(J)+gradient*HEIGHT!Tbot1D+1500.0*deltaY*10.0*(-1.0*gradient)
+
+IF (newA(I,J,K) .GE. 900.0) THEN
+W(J)=900.0
+E(J)=900.0
+oldA(I,J,K)=900.0
+Temp(I,J,K)=900.0
+newA(I,J,K)=900.0
+END IF
+
+!WRITE(1000005,*) Temp(I,J)
+
+END DO
+END DO
+END DO
+
+write(999909,300) W
+!Initial Temperature anomaly
+!DO I=BASE_X/2-25,BASE_X/2+25
+!DO J=BASE_Y-60,BASE_Y-10
+!DO K=BASE_Z/2-25,BASE_Z/2+25
+!   oldA(I,J,K)=MeltCrock11
+!   Temp(I,J,K)=MeltCrock11
+!   newA(I,J,K)=MeltCrock11
+!MaterialSwitch(I,J,K)=11
+!   MaterialSwitch_B(I,J,K)=11
+!   MeltFracCrockN1(I,J,K)=1.0
+!  MeltFracCrockN2(I,J,K)=1.0
+!  MeltFracCrockN3(I,J,K)=1.0
+!END DO
+!END DO
+!END DO
+
+
+
+
+bottom_mark=term1
+!write(998,*) W
+!write(999,*) E
+write(11) newA
+
+!Initialize Material Switch (all is country rock)
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+  MaterialSwitch(I,J,K)=1        ! This is for amphibolite layer
+  MaterialSwitch_B(I,J,K)=1
+ END DO
+END DO
+END DO
+
+DO I=1,BASE_X
+ DO K=1,BASE_Z
+ DO J=1,int((HEIGHT-BASE_CRUST)/(HEIGHT/BASE_Y))
+  MaterialSwitch(I,J,K)=2     ! mantle peridotite
+  MaterialSwitch_B(I,J,K)=2
+ END DO
+END DO
+END DO
+
+DO I=1,BASE_X
+ DO K=1,BASE_Z
+ DO J=int((HEIGHT-BASE_CRUST)/(HEIGHT/BASE_Y)),int((HEIGHT-BASEMENT_PLUTONS)/(HEIGHT/BASE_Y))
+   MaterialSwitch(I,J,K)=1     ! 
+   MaterialSwitch_B(I,J,K)=1   ! 
+ END DO
+END DO
+END DO
+
+DO I=1,BASE_X
+ DO K=1,BASE_Z
+ DO J=int((HEIGHT-BASEMENT_PLUTONS)/(HEIGHT/BASE_Y)),int((HEIGHT-SUBVOLCANIC_PLUTONS)/(HEIGHT/BASE_Y))
+  MaterialSwitch(I,J,K)=3
+  MaterialSwitch_B(I,J,K)=3  ! 
+ END DO
+END DO
+END DO
+
+DO I=1,BASE_X
+DO K=1,BASE_Z
+ DO J=int((HEIGHT-SUBVOLCANIC_PLUTONS)/(HEIGHT/BASE_Y)),int((HEIGHT-META_VOLCANICS)/(HEIGHT/BASE_Y))
+  MaterialSwitch(I,J,K)=4
+  MaterialSwitch_B(I,J,K)=4  ! 
+ END DO
+END DO
+END DO
+
+DO I=1,BASE_X
+ DO K=1,BASE_Z
+ DO J=int((HEIGHT-META_VOLCANICS)/(HEIGHT/BASE_Y)),int((HEIGHT-NEO_VOLCANICS)/(HEIGHT/BASE_Y))
+  MaterialSwitch(I,J,K)=5
+  MaterialSwitch_B(I,J,K)=5  ! 
+ END DO
+END DO
+END DO
+
+
+DO I=1,BASE_X
+DO K=1,BASE_Z
+ DO J=int((HEIGHT-NEO_VOLCANICS)/(HEIGHT/BASE_Y)),int((HEIGHT)/(HEIGHT/BASE_Y))
+  MaterialSwitch(I,J,K)=6
+  MaterialSwitch_B(I,J,K)=6  ! 
+ END DO
+END DO
+END DO
+
+
+
+!set up k,cp and density
+!Note that amphibolite and basalt molten and solid densities are used here.  
+!This needs to be adjusted for other lithologies
+
+DO I=1,BASE_X          
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+VOLUMECHANGE(I,J,K)=0.0
+PRESSURECHANGE(I,J,K)=0.0
+COMPRESS(I,J,K)=0.0
+MU(I,J,K)=20.
+
+  IF (MaterialSwitch(I,J,K)/=2) THEN   !CHECKPOINT NEEDS MODIFIED
+!   k(I,J)=kCrock
+!   cp(I,J)=cpCrock
+ 
+    kcond(I,J,K)=MeltFracCrockN1(I,J,K)*k_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*k_solid_crock
+   cp(I,J,K)=MeltFracCrockN1(I,J,K)*cp_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*cp_solid_crock
+  density(I,J,K)=MeltFracCrockN1(I,J,K)*rho_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*rho_solid_crock
+   ELSE IF (MaterialSwitch(I,J,K)==3) THEN
+!   k(I,J)=kCrock2
+!   cp(I,J)=cpCrock2
+ kcond(I,J,K)=MeltFracCrockN1(I,J,K)*k_melt_crock2+(1.0-MeltFracCrockN1(I,J,K))*k_solid_crock2
+   cp(I,J,K)=MeltFracCrockN1(I,J,K)*cp_melt_crock2+(1.0-MeltFracCrockN1(I,J,K))*cp_solid_crock2
+  
+ density(I,J,K)=MeltFracCrockN1(I,J,K)*rho_melt_crock2+(1.0-MeltFracCrockN1(I,J,K))*rho_solid_crock2
+  ELSE IF (MaterialSwitch(I,J,K)==2 ) THEN
+!   k(I,J)=kdike
+!   cp(I,J)=cpdike
+ kcond(I,J,K)=MeltFracCrockN1(I,J,K)*k_melt_basalt+(1.0-MeltFracCrockN1(I,J,K))*k_solid_basalt
+   cp(I,J,K)=MeltFracCrockN1(I,J,K)*cp_melt_basalt+(1.0-MeltFracCrockN1(I,J,K))*cp_solid_basalt
+ 
+  density(I,J,K)=MeltFracDikeN1(I,J,K)*rho_melt_basalt+(1.0-MeltFracDikeN1(I,J,K))*rho_solid_basalt
+  END IF
+!  density(I,J)=(2.0-MaterialSwitch(I,J))*(MeltFracCrockN1(I,J)*rho_melt_crock+(1.0-MeltFracCrockN1(I,J))*rho_solid_crock) &
+!     +(1.0-(2.0-MaterialSwitch(I,J)))*(MeltFracDikeN1(I,J)*rho_melt_basalt+(1.0-MeltFracDikeN1(I,J))*rho_solid_basalt)
+DENSITYOLD(I,J,K)=density(I,J,K)
+ END DO
+END DO
+END DO
+
+
+!Initialize melt fraction------------------------------------------------------------------------!
+!It is important to accurately reflect the melt fracion diagram here-----------------------------!
+!------------------------------------------------------------------------------------------------!
+
+
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+  IF (MaterialSwitch(I,J,K)==1) Then
+   MeltCrock=MeltCrock1
+   FreezeCrock=FreezeCrock1
+   FSLOPECROCKER=FSLOPECROCKER1
+  
+  IF (newA(I,J,K)<FreezeCrock) Then
+     MeltFracCrockN1(I,J,K)=0.0
+    ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+     MeltFracCrockN1(I,J,K)=(newA(I,J,K)-FreezeCrock)*FSLOPECROCKER !((-1.2345e-8)*newA(I,J,K)**3)+((3.7108e-5)*newA(I,J,K)**2)+((-.0343)*newA(I,J,K))+10.0096 !JDufek, 2013 
+     ELSE IF (newA(I,J,K)>MeltCrock)Then
+     MeltFracCrockN1(I,J,K)=1.0
+    END IF
+  END IF
+
+  IF (MaterialSwitch(I,J,K)==3) Then
+  MeltCrock=MeltCrock3
+  FreezeCrock=FreezeCrock3
+  FSLOPECROCKER=FSLOPECROCKER3
+ 
+   IF (newA(I,J,K)<FreezeCrock) Then
+     MeltFracCrockN1(I,J,K)=0.0
+    ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+
+!DUFEK CHECKPOINT
+       MeltFracCrockN1(I,J,K)=(newA(I,J,K)-FreezeCrock)*FSLOPECROCKER !(-1.455e-5)*(newA(I,J,K)**2)+(3.922e-2*newA(I,J,K))-2.535e1 
+     ELSE IF (newA(I,J,K)>MeltCrock)Then
+     MeltFracCrockN1(I,J,K)=1.0
+    END IF
+  END IF
+ 
+
+ IF (MaterialSwitch(I,J,K)==4) Then
+  MeltCrock=MeltCrock4
+  FreezeCrock=FreezeCrock4
+  FSLOPECROCKER=FSLOPECROCKER4
+
+   IF (newA(I,J,K)<FreezeCrock) Then
+     MeltFracCrockN1(I,J,K)=0.0
+    ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+
+!DUFEK CHECKPOINT 11_1
+       MeltFracCrockN1(I,J,K)=(newA(I,J,K)-FreezeCrock)*FSLOPECROCKER !(4.5599e-5)*(newA(I,J,K)**2)+(-9.98e-2*newA(I,J,K))+5.46e1
+     ELSE IF (newA(I,J,K)>MeltCrock)Then
+     MeltFracCrockN1(I,J,K)=1.0
+    END IF
+  END IF
+
+  
+ IF (MaterialSwitch(I,J,K)==5) Then
+  MeltCrock=MeltCrock5
+  FreezeCrock=FreezeCrock5
+  FSLOPECROCKER=FSLOPECROCKER5
+
+   IF (newA(I,J,K)<FreezeCrock) Then
+     MeltFracCrockN1(I,J,K)=0.0
+    ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+
+!DUFEK CHECKPOINT 11_1
+       MeltFracCrockN1(I,J,K)=(newA(I,J,K)-FreezeCrock)*FSLOPECROCKER  !(-1.455e-5)*(newA(I,J,K)**2)+(3.922e-2*newA(I,J,K))-2.535e1
+     ELSE IF (newA(I,J,K)>MeltCrock)Then
+     MeltFracCrockN1(I,J,K)=1.0
+    END IF
+  END IF
+
+ IF (MaterialSwitch(I,J,K)==6) Then
+  MeltCrock=MeltCrock6
+  FreezeCrock=FreezeCrock6
+  FSLOPECROCKER=FSLOPECROCKER6
+
+   IF (newA(I,J,K)<FreezeCrock) Then
+     MeltFracCrockN1(I,J,K)=0.0
+    ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+
+!DUFEK CHECKPOINT 11_1
+       MeltFracCrockN1(I,J,K)=(newA(I,J,K)-FreezeCrock)*FSLOPECROCKER  !(-1.455e-5)*(newA(I,J,K)**2)+(3.922e-2*newA(I,J,K))-2.535e1
+     ELSE IF (newA(I,J,K)>MeltCrock)Then
+     MeltFracCrockN1(I,J,K)=1.0
+    END IF
+  END IF
+
+ IF (MaterialSwitch(I,J,K)==11) Then
+  MeltCrock=MeltCrock11
+  FreezeCrock=FreezeCrock11
+  FSLOPECROCKER=FSLOPECROCKER11
+
+   IF (newA(I,J,K)<FreezeCrock) Then
+     MeltFracCrockN1(I,J,K)=0.0
+    ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+
+!DUFEK CHECKPOINT 11_1
+       MeltFracCrockN1(I,J,K)=(newA(I,J,K)-FreezeCrock)*FSLOPECROCKER11!(-1.455e-5)*(newA(I,J,K)**2)+(3.922e-2*newA(I,J,K))-2.535e1
+     ELSE IF (newA(I,J,K)>MeltCrock)Then
+     MeltFracCrockN1(I,J,K)=1.0
+    END IF
+  END IF
+
+
+  IF (MaterialSwitch(I,J,K)==2) Then
+      IF (newA(I,J,K)<FreezeDike) Then
+         MeltFracDikeN1(I,J,K)=0.0
+      ElSE IF (newA(I,J,K)>FreezeDike .and. newA(I,J,K)<MeltDike) Then
+!DUFEK CHECKPOINT
+             IF (newA(I,J,K)>DikeInterv(1) .and. newA(I,J,K)<=DikeInterv(2)) THEN
+              ! MeltFracDikeN1(I,J)=(4.01639e-4*newA(I,J))-.276207
+               MeltFracDikeN1(I,J,K)=(0.0028*newA(I,J,K))-1.818
+             ELSE IF (newA(I,J,K)>DikeInterv(2) .and. newA(I,J,K)<=DikeInterv(3)) THEN
+              !  MeltFracDikeN1(I,J)=(1.05717e-3*newA(I,J))-.87327
+             MeltFracDikeN1(I,J,K)=(0.000830681*newA(I,J,K))-.434822666
+             ELSE IF (newA(I,J,K)>DikeInterv(3) .and. newA(I,J,K)<=DikeInterv(4)) THEN
+              !  MeltFracDikeN1(I,J)=(4.82454e-3*newA(I,J))-4.97382
+             MeltFracDikeN1(I,J,K)=(0.0045920635*newA(I,J,K))-4.1204126984
+             ELSE IF (newA(I,J,K)>DikeInterv(4) .and. newA(I,J,K)<=MeltDike) THEN
+             MeltFracDikeN1(I,J,K)=(0.001138292*newA(I,J,K))-0.3288942
+              END IF
+       ELSE IF (newA(I,J,K)>MeltDike)Then
+          MeltFracDikeN1(I,J,K)=1.0
+     END IF
+  END IF
+ 
+
+END DO
+END DO
+END DO
+
+
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+    MAXTEMP(I,J,K)=0.0
+ END DO 
+END DO
+END DO
+
+!write(11,300) newA
+!write(13,300) MeltFracCrockN1
+
+
+!Readjust density to account for melt fraction inializations------------------------------------------!
+!-----------------------------------------------------------------------------------------------------!
+
+
+DO I=1,BASE_X   
+ DO J=1,BASE_Y
+   DO K=1,BASE_Z
+    IF (MaterialSwitch(I,J,K)==1) THEN
+      kcond(I,J,K)=MeltFracCrockN1(I,J,K)*k_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*k_solid_crock
+      cp(I,J,K)=MeltFracCrockN1(I,J,K)*cp_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*cp_solid_crock
+  
+    density(I,J,K)=MeltFracCrockN1(I,J,K)*rho_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*rho_solid_crock
+    ELSE IF (MaterialSwitch(I,J,K)==3) THEN
+
+ kcond(I,J,K)=MeltFracCrockN1(I,J,K)*k_melt_crock2+(1.0-MeltFracCrockN1(I,J,K))*k_solid_crock2
+      cp(I,J,K)=MeltFracCrockN1(I,J,K)*cp_melt_crock2+(1.0-MeltFracCrockN1(I,J,K))*cp_solid_crock2
+
+      density(I,J,K)=MeltFracCrockN1(I,J,K)*rho_melt_crock2+(1.0-MeltFracCrockN1(I,J,K))*rho_solid_crock2
+    ELSE IF (MaterialSwitch(I,J,K)==2 .OR. MaterialSwitch(I,J,K)==5) THEN
+  kcond(I,J,K)=MeltFracCrockN1(I,J,K)*k_melt_basalt+(1.0-MeltFracCrockN1(I,J,K))*k_solid_basalt
+      cp(I,J,K)=MeltFracCrockN1(I,J,K)*cp_melt_basalt+(1.0-MeltFracCrockN1(I,J,K))*cp_solid_basalt
+
+      density(I,J,K)=MeltFracDikeN1(I,J,K)*rho_melt_basalt+(1.0-MeltFracDikeN1(I,J,K))*rho_solid_basalt
+    END IF
+
+ END DO
+END DO
+END DO
+
+
+!set alpha and betas
+!alpha and beta are the surrounding diffusion coefficients
+!ap0 is the time step coefficient
+
+DO K=1,BASE_Z
+DO J=1,BASE_Y
+  DO I=1,BASE_X
+   alpha(I,J,K)=(kcond(I,J,K)*area1)/(deltaY)
+   alphaX(I,J,K)=(kcond(I,J,K)*area2)/(deltaX)
+   alphaZ(I,J,K)=(kcond(I,J,K)*area3)/(deltaZ)  
+
+   beta(I,J,K)=(kcond(I,J,K)*area1)/(deltaY)
+   betaX(I,J,K)=(kcond(I,J,K)*area2)/(deltaX)  
+   betaZ(I,J,K)=(kcond(I,J,K)*area3)/(deltaZ)
+
+  ap0(I,J,K)=(density(I,J,K)*cp(I,J,K)*(deltaY*deltaX*deltaZ))/(deltaTime)
+ 
+  !set up d (Patankar terminology) terms...initialize source terms to zero for start
+
+  Sp(I,J,K)=0.
+
+ END DO  !I loop!
+END DO  !J loop!
+END DO !K loop
+
+
+!Initialize the random diking routine---------------------------------------!
+!----------------------------------------------------------------------------!
+
+kstep=1
+L=1
+FREQUENCYADJUST=Int(ran2(rand5)*FREQUENCY)
+
+IF (FREQUENCYADJUST<1) THEN
+ FREQUENCYADJUST=1
+END IF
+
+!write(12, *) FREQUENCYADJUST
+
+
+TRATE_ADJUST=0.0
+TRATE=(ABS((TECTONIC_RATE*DeltaTime)))
+TectonicZone=int(TECTONIC_REGION/deltaX)
+TectonicWidth=2
+
+SRATE_ADJUST=0.0
+SRATE=(ABS((SED_RATE*DeltaTime)))
+SedZone=int(SED_REGION/deltaX)
+SedWidth=2
+
+Volume=0.0
+
+WRITE(1111,*) TRATE,TectonicZone
+
+!----------------------------------------------------------------------------!
+!-----------------------Start Time Steps-------------------------------------!
+!----------------------------------------------------------------------------!
+
+
+!------------ZZ is time step counter
+
+
+!DO I=40,60
+! DO J=40,60
+!  DO K=40,60
+!    MaterialSwitch_B(I,J,K)=11
+!    MaterialSwitch(I,J,K)=11
+!    newA(I,J,K)=MeltCrock11
+!    Temp(I,J,K)=MeltCrock11
+!    oldA(I,J,K)=MeltCrock11
+!    MeltFracDikeN1(I,J,K)=0.0
+!    MeltFracCrockN1(I,J,K)=1.0 
+!   END DO
+! END DO
+!END DO
+
+
+
+DO ZZ=1,TIMESTEPS
+
+WRITE(10000,*) ZZ
+
+!-------------------Tectonic Adjustment--------------------------------------!
+!----------------------------------------------------------------------------!
+!Rift/compression is in 2D -- along X direction
+
+JUNK=.TRUE.
+
+IF (JUNK) THEN
+
+
+TectonicZone=int(TECTONIC_REGION/deltaX)
+
+TRATE_ADJUST=TRATE_ADJUST+TRATE
+
+DO WHILE (TRATE_ADJUST>deltaY)
+TRATE_ADJUST=0.0
+TectonicWidth=TectonicWidth+4
+
+IF (TectonicWidth>TectonicZone) THEN
+ TectonicWidth=TectonicZone
+END IF
+
+   DO II=1,BASE_X
+    DO JJ=1,BASE_Y
+     DO KK=1,BASE_Z
+     MaterialSwitchC(II,JJ,KK)=MaterialSwitch(II,JJ,KK)
+     MaterialSwitchC_B(II,JJ,KK)=MaterialSwitch_B(II,JJ,KK)
+     oldAC(II,JJ,KK)=oldA(II,JJ,KK)
+     newAC(II,JJ,KK)=newA(II,JJ,KK)
+     TempC(II,JJ,KK)=Temp(II,JJ,KK)
+     MeltFracDikeN1C(II,JJ,KK)=MeltFracDikeN1(II,JJ,KK)
+     MeltFracCrockN1C(II,JJ,KK)=MeltFracCrockN1(II,JJ,KK)
+     MeltFracDikeN2C(II,JJ,KK)=MeltFracDikeN2(II,JJ,KK)
+     MeltFracCrockN2C(II,JJ,KK)=MeltFracCrockN2(II,JJ,KK)
+     MeltFracDikeN3C(II,JJ,KK)=MeltFracDikeN3(II,JJ,KK)
+     MeltFracCrockN3C(II,JJ,KK)=MeltFracCrockN3(II,JJ,KK)
+   END DO
+END DO
+END DO
+
+IF (TECTONIC_RATE<0.0) THEN
+DO II=(BASE_X/2)-(TectonicWidth/2),(BASE_X/2)+(TectonicWidth/2)
+ DO JJ=2,BASE_Y
+  DO KK=1,BASE_Z
+     MaterialSwitch(II,JJ,KK)=MaterialSwitchC(II,JJ-1,KK)
+     MaterialSwitch_B(II,JJ,KK)=MaterialSwitchC_B(II,JJ-1,KK)
+     oldA(II,JJ,KK)=oldAC(II,JJ-1,KK)
+     newA(II,JJ,KK)=newAC(II,JJ-1,KK)
+     Temp(II,JJ,KK)=TempC(II,JJ-1,KK)
+     MeltFracDikeN1(II,JJ,KK)=MeltFracDikeN1C(II,JJ-1,KK)
+     MeltFracCrockN1(II,JJ,KK)=MeltFracCrockN1C(II,JJ-1,KK)
+     MeltFracDikeN2(II,JJ,KK)=MeltFracDikeN2C(II,JJ-1,KK)
+     MeltFracCrockN2(II,JJ,KK)=MeltFracCrockN2C(II,JJ-1,KK)
+     MeltFracDikeN3(II,JJ,KK)=MeltFracDikeN3C(II,JJ-1,KK)
+     MeltFracCrockN3(II,JJ,KK)=MeltFracCrockN3C(II,JJ-1,KK)
+ END DO
+END DO
+END DO
+END IF
+
+
+IF (TECTONIC_RATE>0.0) THEN
+DO II=(BASE_X/2)-(TectonicWidth/2),(BASE_X/2)+(TectonicWidth/2)
+ DO JJ=2,BASE_Y-1
+   DO KK=1,BASE_Z
+     MaterialSwitch(II,JJ,KK)=MaterialSwitchC(II,JJ+1,KK)
+    MaterialSwitch_B(II,JJ,KK)=MaterialSwitchC_B(II,JJ+1,KK)
+      oldA(II,JJ,KK)=oldAC(II,JJ+1,KK)
+     newA(II,JJ,KK)=newAC(II,JJ+1,KK)
+     Temp(II,JJ,KK)=TempC(II,JJ+1,KK)
+     MeltFracDikeN1(II,JJ,KK)=MeltFracDikeN1C(II,JJ+1,KK)
+     MeltFracCrockN1(II,JJ,KK)=MeltFracCrockN1C(II,JJ+1,KK)
+     MeltFracDikeN2(II,JJ,KK)=MeltFracDikeN2C(II,JJ+1,KK)
+     MeltFracCrockN2(II,JJ,KK)=MeltFracCrockN2C(II,JJ+1,KK)
+     MeltFracDikeN3(II,JJ,KK)=MeltFracDikeN3C(II,JJ+1,KK)
+     MeltFracCrockN3(II,JJ,KK)=MeltFracCrockN3C(II,JJ+1,KK)
+ END DO
+ END DO
+END DO
+END IF
+
+
+END DO
+!While Loop (tectonics)
+
+
+!Sedimentation
+
+SedZone=int(SED_REGION/deltaX)
+
+SRATE_ADJUST=SRATE_ADJUST+SRATE
+
+DO WHILE (SRATE_ADJUST>deltaY)
+SRATE_ADJUST=0.0
+SedWidth=SedWidth+4
+
+IF (SedWidth>SedZone) THEN
+ SedWidth=SedZone
+END IF
+
+
+   DO II=1,BASE_X
+    DO JJ=1,BASE_Y
+     DO KK=1,BASE_Z
+     MaterialSwitchC(II,JJ,KK)=MaterialSwitch(II,JJ,KK)
+    MaterialSwitchC_B(II,JJ,KK)=MaterialSwitch_B(II,JJ,KK)
+     oldAC(II,JJ,KK)=oldA(II,JJ,KK)
+     newAC(II,JJ,KK)=newA(II,JJ,KK)
+     TempC(II,JJ,KK)=Temp(II,JJ,KK)
+     MeltFracDikeN1C(II,JJ,KK)=MeltFracDikeN1(II,JJ,KK)
+     MeltFracCrockN1C(II,JJ,KK)=MeltFracCrockN1(II,JJ,KK)
+     MeltFracDikeN2C(II,JJ,KK)=MeltFracDikeN2(II,JJ,KK)
+     MeltFracCrockN2C(II,JJ,KK)=MeltFracCrockN2(II,JJ,KK)
+     MeltFracDikeN3C(II,JJ,KK)=MeltFracDikeN3(II,JJ,KK)
+     MeltFracCrockN3C(II,JJ,KK)=MeltFracCrockN3(II,JJ,KK)
+   END DO
+ END DO
+END DO
+
+IF (SED_RATE>0.0) THEN
+DO II=(BASE_X/2)-(SedWidth/2),(BASE_X/2)+(SedWidth/2)
+ DO JJ=2,BASE_Y-1
+   DO KK=1,BASE_Z
+     MaterialSwitch(II,JJ,KK)=MaterialSwitchC(II,JJ+1,KK)
+    MaterialSwitch_B(II,JJ,KK)=MaterialSwitchC_B(II,JJ+1,KK)
+      oldA(II,JJ,KK)=oldAC(II,JJ+1,KK)
+     newA(II,JJ,KK)=newAC(II,JJ+1,KK)
+     Temp(II,JJ,KK)=TempC(II,JJ+1,KK)
+     MeltFracDikeN1(II,JJ,KK)=MeltFracDikeN1C(II,JJ+1,KK)
+     MeltFracCrockN1(II,JJ,KK)=MeltFracCrockN1C(II,JJ+1,KK)
+     MeltFracDikeN2(II,JJ,KK)=MeltFracDikeN2C(II,JJ+1,KK)
+     MeltFracCrockN2(II,JJ,KK)=MeltFracCrockN2C(II,JJ+1,KK)
+     MeltFracDikeN3(II,JJ,KK)=MeltFracDikeN3C(II,JJ+1,KK)
+     MeltFracCrockN3(II,JJ,KK)=MeltFracCrockN3C(II,JJ+1,KK)
+ END DO
+END DO
+END DO
+END IF
+
+
+END DO
+!While Loop (seds)
+
+
+
+!WRITE(10000,*) ZZ
+
+!----------------Start of random diking routine---------------------------!
+!--------------------------------------------------------------------------!
+
+!FREQUENCYADJUST=10
+
+IF (ZZ==1) THEN
+
+!Initial Temperature anomaly
+DO I=(BASE_X/2)-20,(BASE_X/2)+20
+DO J=BASE_Y-30,BASE_Y-16
+DO K=(BASE_Z/2)-20,(BASE_Z/2)+20
+   oldA(I,J,K)=MeltCrock11
+   Temp(I,J,K)=MeltCrock11
+   newA(I,J,K)=MeltCrock11
+MaterialSwitch(I,J,K)=11
+   MaterialSwitch_B(I,J,K)=11
+   MeltFracCrockN1(I,J,K)=1.0
+  MeltFracCrockN2(I,J,K)=1.0
+  MeltFracCrockN3(I,J,K)=1.0
+END DO
+END DO
+END DO
+
+END IF
+
+
+!IF (ZZ==2000) THEN
+
+!Initial Temperature anomaly
+!DO I=(BASE_X/2)-25,(BASE_X/2)+15
+!DO J=BASE_Y-23,BASE_Y-14
+!DO K=(BASE_Z/2)-28,(BASE_Z/2)+16
+!   oldA(I,J,K)=MeltCrock11
+!   Temp(I,J,K)=MeltCrock11
+!   newA(I,J,K)=MeltCrock11
+!MaterialSwitch(I,J,K)=11
+!   MaterialSwitch_B(I,J,K)=11
+!   MeltFracCrockN1(I,J,K)=1.0
+!  MeltFracCrockN2(I,J,K)=1.0
+!  MeltFracCrockN3(I,J,K)=1.0
+!END DO
+!END DO
+!END DO
+
+!END IF
+
+
+DO WHILE (ZZ==FREQUENCYADJUST)
+!write(997,*) 1,ZZ
+
+!write(12,*) ZZ
+
+length=0.0
+rand5=rand5-21
+
+
+!Readjust the frequency---------------------!
+!-------------------------------------------!
+
+FREQUENCYADJUST1=Int(ran2(rand5)*FREQUENCY)
+ IF (FREQUENCYADJUST1<1.0) THEN
+  FREQUENCYADJUST1=1.0
+ END IF
+
+
+FREQUENCYADJUST=FREQUENCYADJUST+FREQUENCYADJUST1
+!write(12,*) ZZ, FREQUENCYADJUST1, FREQUENCYADJUST
+
+!FREQUENCYADJUST=9
+!write(12,*) FREQUENCYADJUST
+
+!-------change random number seeds in an incremental way----------------------------!
+!-----------------------------------------------------------------------------------!
+
+rand1=rand1-1
+rand2=rand2-2
+rand3=rand3-3
+rand4=rand4-4
+rand5=rand5-5
+rand6=rand6-6
+rand7=rand7-7
+
+
+
+!IF ( ZZ<5000) THEN
+
+!REWRITE
+TectonicZone=int(TECTONIC_REGION/deltaX)
+InjectZone=int(INJECT_WIDTH/deltaX)
+
+TectonicZoneZ=int(TECTONIC_REGIONZ/deltaZ)
+InjectZoneZ=int(INJECT_WIDTHZ/deltaZ)
+
+
+basestart=int((BASE_X/2))+int((.5-ran2(rand1))*REAL(InjectZone))!(int((BASE_X/2)+int(magmagradient/2))*ran2(rand7))!int((BASE_X/2)+(InjectZone/2)-ran2(rand1)*InjectZone)
+
+baseend=basestart-5.0+int(10.0*ran2(rand7))!int((BASE_X/2)+(InjectZone/2)-ran2(rand1)*InjectZone)
+
+IF (basestart==baseend) THEN
+basestart=basestart+1
+END IF
+
+rand1=rand1-1
+rand2=rand2-1
+basestartZ=int((BASE_Z/2))+int((.5-ran2(rand1))*REAL(InjectZoneZ))
+
+baseendZ=basestartZ-5.0+int(10.0*ran2(rand7))!int((BASE_X/2)+(InjectZone/2)-ran2(rand1)*InjectZone)
+
+IF (basestartZ==baseendZ) THEN
+basestartZ=basestartZ+1
+END IF
+
+randomL=INT((INT(BASE_CRUST)/(INT(HEIGHT)/BASE_Y))*ran2(rand2))+int((HEIGHT-BASE_CRUST)/(int(HEIGHT)/BASE_Y))   
+
+DO WHILE (randomL>((int(HEIGHT)/(int(HEIGHT)/BASE_Y))-int(INJECT_HEIGHT/deltaY)))
+ rand2=rand2-1
+ randomL=INT((INT(BASE_CRUST)/(INT(HEIGHT)/BASE_Y))*ran2(rand2))+int((HEIGHT-BASE_CRUST)/(int(HEIGHT)/BASE_Y))
+END DO
+
+
+!Check to see if the dike will intersect a pocket of high melt fraction melt, if
+!so, adjust randomL
+
+
+randomM=randomL
+
+!write(997,*) 2
+
+DO J=int((HEIGHT-BASE_CRUST)/REAL(HEIGHT/BASE_Y))+15,(BASE_Y-randomL)
+ Bterm=1.0-((BASE_Y-1.0)/(basestart-baseend))*basestart
+ Mterm=((BASE_Y-1.0)/(basestart-baseend))
+ I=int(((REAL(J)-(Bterm))/Mterm))
+
+ BtermZ=1.0-((BASE_Z-1.0)/(basestartZ-baseendZ))*basestartZ
+ MtermZ=((BASE_Z-1.0)/(basestartZ-baseendZ))
+ K=int(((REAL(J)-(BtermZ))/MtermZ))
+
+!write(997,*)3,Bterm,Mterm
+!write(997,*)4,I,K
+!write(997,*)5,BtermZ,MtermZ
+
+
+IF (MeltFracCrockN1(I,J,K)>CRITICAL_MELT) THEN
+ randomM=BASE_Y-J
+! write(8211,*) 2,randomM,randomL
+! write(8211,*) MeltFracCrockN1(I,J,K)
+ EXIT
+END IF
+
+
+IF (MeltFracDikeN1(I,J,K)>CRITICAL_MELT) THEN
+ randomM=BASE_Y-J
+ !write(8211,*)3,randomM,randomL
+ !write(8211,*) MeltFracDikeN1(I,J,K)
+ EXIT
+END IF
+
+
+END DO
+
+IF ((BASE_Y-randomM)<(BASE_Y-randomL)) THEN
+  randomL=randomM
+  !write(8211,*) 4
+END IF
+
+
+!write(10001,*)randomL
+DIKE_LENGTH=randomL-INT((HEIGHT-BASE_CRUST)/(HEIGHT/BASE_Y))
+!write(10001,*)basestart,baseend,randomL,DIKE_LENGTH
+
+
+INTRUSION=1
+
+
+
+IF (INTRUSION==1) THEN
+!write(10002,*)int((HEIGHT-BASE_CRUST)/REAL(HEIGHT/BASE_Y)),randomL
+
+DO J=int((HEIGHT-BASE_CRUST)/REAL(HEIGHT/BASE_Y)),BASE_Y-randomL !DUFEK4_19
+ Bterm=1.0-((BASE_Y-1.0)/(basestart-baseend))*basestart
+ Mterm=((BASE_Y-1.0)/(basestart-baseend))
+ 
+ I=int(((REAL(J)-(Bterm))/Mterm))
+
+ BtermZ=1.0-((BASE_Y-1.0)/(basestartZ-baseendZ))*basestartZ
+ MtermZ=((BASE_Y-1.0)/(basestartZ-baseendZ))
+
+ K=int(((REAL(J)-(BtermZ))/MtermZ))
+
+!write(997,*)6,I,K
+
+!write(10002,*)Mterm,Bterm,I,J
+
+ IF (I==0) THEN
+  I=1
+ END IF
+
+
+!-----Now "Draw in ELEMENTS"
+!-------------------------------randomL is subtracted from the length, keep at 0 if you want dikes to pass all
+!---------------------------------the way through.
+
+
+
+SILL_HEIGHT=J+1
+
+IF (J<SILL_HEIGHT) THEN
+
+
+
+
+   DO II=1,BASE_X
+    DO JJ=1,BASE_Y
+     DO KK=1,BASE_Z
+     MaterialSwitchC(II,JJ,KK)=MaterialSwitch(II,JJ,KK)
+     MaterialSwitchC_B(II,JJ,KK)=MaterialSwitch_B(II,JJ,KK)
+     oldAC(II,JJ,KK)=oldA(II,JJ,KK)
+     newAC(II,JJ,KK)=newA(II,JJ,KK)
+     TempC(II,JJ,KK)=Temp(II,JJ,KK)
+     MeltFracDikeN1C(II,JJ,KK)=MeltFracDikeN1(II,JJ,KK)
+     MeltFracCrockN1C(II,JJ,KK)=MeltFracCrockN1(II,JJ,KK)
+     MeltFracDikeN2C(II,JJ,KK)=MeltFracDikeN2(II,JJ,KK)
+     MeltFracCrockN2C(II,JJ,KK)=MeltFracCrockN2(II,JJ,KK)
+     MeltFracDikeN3C(II,JJ,KK)=MeltFracDikeN3(II,JJ,KK)
+     MeltFracCrockN3C(II,JJ,KK)=MeltFracCrockN3(II,JJ,KK)
+   END DO
+END DO
+END DO
+
+!EXTENSION: Shift things away from dike
+random_switch=ran2(rand3)
+rand3=rand3-1
+!tracker
+
+dikeshift=PDIKE/2
+
+!write(10003,*)random_switch,rand3
+
+IF (I>2 .and. I < BASE_X-2) THEN
+
+!  IF (random_switch<=0.5) THEN
+!!DO KK=1,BASE_Z
+!!   DO II=2,I
+ !   write(10003,*) II-1,I,J
+!!    MaterialSwitch(II-dikeshift,J,KK)=MaterialSwitchC(II,J,KK)
+!!    MaterialSwitch_B(II-dikeshift,J,KK)=MaterialSwitchC_B(II,J,KK)
+!!    oldA(II-dikeshift,J,KK)=oldAC(II,J,KK)
+!!    newA(II-dikeshift,J,KK)=newAC(II,J,KK)
+!!    Temp(II-dikeshift,J,KK)=TempC(II,J,KK)
+!!    MeltFracDikeN1(II-dikeshift,J,KK)=MeltFracDikeN1C(II,J,KK)
+!!    MeltFracCrockN1(II-dikeshift,J,KK)=MeltFracCrockN1C(II,J,KK)
+!!   END DO
+!!END DO 
+
+!!DO KK=1,BASE_Z
+!!DO II=BASE_X-1,I,-1!I,2,-1
+!!   MaterialSwitch(II+dikeshift,J,KK)=MaterialSwitchC(II,J,KK)
+!!   MaterialSwitch_B(II+dikeshift,J,KK)=MaterialSwitchC_B(II,J,KK)
+!!   oldA(II+dikeshift,J,KK)=oldAC(II,J,KK)
+!!   newA(II+dikeshift,J,KK)=newAC(II,J,KK)
+!!   Temp(II+dikeshift,J,KK)=TempC(II,J,KK)
+!!   MeltFracDikeN1(II+dikeshift,J,KK)=MeltFracDikeN1C(II,J,KK)
+!!   MeltFracCrockN1(II+dikeshift,J,KK)=MeltFracCrockN1C(II,J,KK)
+!!END DO
+!!END DO
+
+END IF
+
+
+!!dikelocation=I
+!!DO KK=0,((PDIKE/2)-1)
+!!DO II=0,((PDIKE/2)-1)
+!!   MaterialSwitch(I-II,J,K-KK)=2
+!!   MaterialSwitch_B(I-II,J,K-KK)=2
+!!   oldA(I-II,J,K-KK)=DikeTemp
+!!   newA(I-II,J,K-KK)=DikeTemp
+!!   Temp(I-II,J,K-KK)=DikeTemp
+!!   MeltFracDikeN1(I-II,J,K-KK)=1.0
+!!M_VOLUME=M_VOLUME+deltaX*deltaY*deltaZ
+!!write(997,*)7,KK
+!!write(1122,*) I, I-II
+!!END DO
+!!END DO
+
+!!DO KK=1,PDIKE/2
+!!DO II=1,PDIKE/2
+!!   MaterialSwitch(I+II,J,K+KK)=2
+!!   MaterialSwitch_B(I+II,J,K+KK)=2
+!!   M_VOLUME=M_VOLUME+deltaX*deltaY*deltaZ
+!!   oldA(I+II,J,K+KK)=DikeTemp
+!!   newA(I+II,J,K+KK)=DikeTemp
+!!   Temp(I+II,J,K+KK)=DikeTemp
+!!   MeltFracDikeN1(I+II,J,K+KK)=1.0
+!!write(1122,*) I, I+II
+!!END DO
+!!END DO
+
+!!!!!!
+!2
+!IF (K>2 .and. K < BASE_Z-2) THEN
+
+!  IF (random_switch<=0.5) THEN
+!DO II=1,BASE_X
+!   DO KK=2,K
+ !   write(10003,*) II-1,I,J
+!    MaterialSwitch(II,J,KK-dikeshift)=MaterialSwitchC(II,J,KK)
+!    MaterialSwitch_B(II,J,KK-dikeshift)=MaterialSwitchC_B(II,J,KK)
+!    oldA(II,J,KK-dikeshift)=oldAC(II,J,KK)
+!    newA(II,J,KK-dikeshift)=newAC(II,J,KK)
+!    Temp(II,J,KK-dikeshift)=TempC(II,J,KK)
+!    MeltFracDikeN1(II,J,KK-dikeshift)=MeltFracDikeN1C(II,J,KK)
+!    MeltFracCrockN1(II,J,KK-dikeshift)=MeltFracCrockN1C(II,J,KK)
+!   END DO
+!END DO
+
+!DO II=1,BASE_X
+!DO KK=BASE_Z-1,K,-1!I,2,-1
+!   MaterialSwitch(II,J,KK+dikeshift)=MaterialSwitchC(II,J,KK)
+!   MaterialSwitch_B(II,J,KK+dikeshift)=MaterialSwitchC_B(II,J,KK)
+!   oldA(II,J,KK+dikeshift)=oldAC(II,J,KK)
+!   newA(II,J,KK+dikeshift)=newAC(II,J,KK)
+!   Temp(II,J,KK+dikeshift)=TempC(II,J,KK)
+!   MeltFracDikeN1(II,J,KK+dikeshift)=MeltFracDikeN1C(II,J,KK)
+!   MeltFracCrockN1(II,J,KK+dikeshift)=MeltFracCrockN1C(II,J,KK)
+!END DO
+!END DO
+
+!END IF
+
+
+!dikelocation=K
+!DO II=0,((PDIKE/2)-1)
+!DO KK=0,((PDIKE/2)-1)
+!   MaterialSwitch(I-II,J,K-KK)=2
+!   MaterialSwitch_B(I-II,J,K-KK)=2
+!   oldA(I-II,J,K-KK)=DikeTemp
+!   newA(I-II,J,K-KK)=DikeTemp
+!   Temp(I-II,J,K-KK)=DikeTemp
+!   MeltFracDikeN1(I-II,J,K-KK)=1.0
+!END DO
+!END DO
+
+!DO II=1,PDIKE/2
+!DO KK=1,PDIKE/2
+!   MaterialSwitch(I+II,J,K+KK)=2
+!   MaterialSwitch_B(I+II,J,K+KK)=2
+!   oldA(I+II,J,K+KK)=DikeTemp
+!   newA(I+II,J,K+KK)=DikeTemp
+!   Temp(I+II,J,K+KK)=DikeTemp
+!   MeltFracDikeN1(I+II,J,K+KK)=1.0
+!END DO
+!END DO
+
+
+
+
+!JD 5_18
+!!   MaterialSwitch(I,J,K)=2
+!!  oldA(I,J,K)=DikeTemp
+!!   newA(I,J,K)=DikeTemp
+!!   Temp(I,J,K)=DikeTemp
+!!   MeltFracDikeN1(I,J,K)=1.0
+!!M_VOLUME=M_VOLUME+deltaX*deltaY*deltaZ
+
+!write(1123,*)I,I-abs(randomL-SILL_HEIGHT),BASE_X,I+abs(randomL-SILL_HEIGHT)
+
+
+END IF
+END DO
+
+
+!put in sills
+
+  DO II=1,BASE_X
+    DO JJ=1,BASE_Y
+      DO KK=1,BASE_Z
+     MaterialSwitchC(II,JJ,KK)=MaterialSwitch(II,JJ,KK)
+     MaterialSwitchC_B(II,JJ,KK)=MaterialSwitch_B(II,JJ,KK)
+     oldAC(II,JJ,KK)=oldA(II,JJ,KK)
+     newAC(II,JJ,KK)=newA(II,JJ,KK)
+     TempC(II,JJ,KK)=Temp(II,JJ,KK)
+     MeltFracDikeN1C(II,JJ,KK)=MeltFracDikeN1(II,JJ,KK)
+     MeltFracCrockN1C(II,JJ,KK)=MeltFracCrockN1(II,JJ,KK)
+     MeltFracDikeN2C(II,JJ,KK)=MeltFracDikeN2(II,JJ,KK)
+     MeltFracCrockN2C(II,JJ,KK)=MeltFracCrockN2(II,JJ,KK)
+     MeltFracDikeN3C(II,JJ,KK)=MeltFracDikeN3(II,JJ,KK)
+     MeltFracCrockN3C(II,JJ,KK)=MeltFracCrockN3(II,JJ,KK)
+   END DO
+END DO
+END DO
+
+!J=BASE_Y-randomL
+!!!CHECK1   J=randomL
+!J is from last element in dike loop
+
+I=int(((REAL(J)-(Bterm))/Mterm))
+K=int(((REAL(J)-(BtermZ))/MtermZ))
+
+IF (J>int((HEIGHT-BASE_CRUST)/REAL(HEIGHT/BASE_Y))) THEN
+
+rand4=rand4-1
+randomX=int(ran2(rand4)*REAL(SILL_P1))
+
+DO WHILE(randomX<PDIKE)
+rand4=rand4-1
+randomX=int(ran2(rand4)*REAL(SILL_P1))
+END DO
+
+rand4=rand4-1
+randomZ=int(ran2(rand4)*REAL(SILL_P1))
+
+DO WHILE(randomZ<PDIKE)
+rand4=rand4-1
+randomZ=int(ran2(rand4)*REAL(SILL_P1))
+END DO
+
+
+
+
+!Dufek check point 8_4
+!IF (I==0) THEN  
+!I=1 
+!END IF
+IF (I>3 .and. I<BASE_X-3) THEN
+IF (K>3 .and. K<BASE_Z-3) THEN
+!write(10005,*)J,SILL_HEIGHT,randomL,randomX,I,SILL_WIDTH
+
+DO KK=K-randomZ+1,K+randomZ
+DO II=I-randomX+1,I+randomX
+IF (II>1) THEN
+IF (KK>1) THEN
+ DO JJ=SILL_WIDTH+1,J+SILL_WIDTH
+     MaterialSwitch(II,JJ-SILL_WIDTH,KK)=MaterialSwitchC(II,JJ,KK)
+     MaterialSwitch_B(II,JJ-SILL_WIDTH,KK)=MaterialSwitchC_B(II,JJ,KK)
+   !oldA(II,JJ-1)=oldA(II,JJ)
+   newA(II,JJ-SILL_WIDTH,KK)=newAC(II,JJ,KK)
+oldA(II,JJ-SILL_WIDTH,KK)=oldAC(II,JJ,KK)   
+TempC(II,JJ-SILL_WIDTH,KK)=TempC(II,JJ,KK)
+!Temp(II-1,J)=TempC(II,JJ)
+   MeltFracDikeN1(II,JJ-SILL_WIDTH,KK)=MeltFracDikeN1C(II,JJ,KK)
+ END DO
+
+
+
+   DO JJ=1,SILL_WIDTH
+! IF (J>JJ) THEN
+   MaterialSwitch(II,J-SILL_WIDTH+JJ,KK)=2
+   MaterialSwitch_B(II,J-SILL_WIDTH+JJ,KK)=2
+   oldA(II,J-SILL_WIDTH+JJ,KK)=DikeTemp
+   newA(II,J-SILL_WIDTH+JJ,KK)=DikeTemp
+   Temp(II,J-SILL_WIDTH+JJ,KK)=DikeTemp
+   MeltFracDikeN1(II,J-SILL_WIDTH+JJ,KK)=1.0
+  M_VOLUME=M_VOLUME+deltaX*deltaY*deltaZ
+!END IF
+
+    END DO
+
+   END IF
+  END IF
+ END DO
+END DO
+
+END IF !Check point/
+END IF
+END IF !bottom condition
+
+END IF
+
+
+!----------------------------------
+!This region of code will describe the transport of melt from the lower crust to
+!upper crust (no net crustal thickening is implied
+!for now use a simple rule to determine if sufficient melt is available
+!
+
+!Determine whether to tranport melt
+
+DZ=(WIDTHZ/REAL(BASE_Z))
+DY=(HEIGHT/REAL(BASE_Y))
+DX=(WIDTH/REAL(BASE_X))
+TOTAL_MELT_LC=0.0
+
+IF (mod(ZZ,INT(FREQUENCY/4))==0) THEN
+
+DO I=(BASE_X/2)-InjectZone/2,(BASE_X/2)+InjectZone/2
+ DO J=BASE_Y-INT(BASE_CRUST/DY),BASE_Y-INT(BASE_CRUST/DY)+INT(10000/DY)   !100
+  DO K=(BASE_Z/2)-InjectZoneZ/2,(BASE_Z/2)+InjectZoneZ/2
+
+IF (MeltFracDikeN1(I,J,K)>0.4 .or. MeltFracCrockN1(I,J,K)>0.4) THEN
+   TOTAL_MELT_LC=TOTAL_MELT_LC+MeltFracDikeN1(I,J,K)*DX*DY*DZ
+   TOTAL_MELT_LC=TOTAL_MELT_LC+MeltFracCrockN1(I,J,K)*DX*DY*DZ
+
+!Reset at extraction condition
+IF (MaterialSwitch(I,J,K)==2 .and. TOTAL_MELT_LC>(SILL_THICKNESS*(DX**2))) THEN
+  newA(I,J,K)=1131.0
+  oldA(I,J,K)=1131.0
+  Temp(I,J,K)=1131.0
+  MeltFracDikeN1(I,J,K)=0.4
+  MeltFracDikeN2(I,J,K)=0.4
+
+END IF
+
+
+
+END IF
+
+   !Determine aggregate melt volume 
+
+  !MATERIALSWITCH(I,J)=6
+  !MATERIALSWITCH_B(I,J)=6
+ END DO
+  END DO
+END DO
+
+END IF
+
+
+WIDTH_LC=sqrt(TOTAL_MELT_LC/SILL_THICKNESS)
+!write(7681,*) ZZ,TOTAL_MELT_LC,WIDTH_LC
+
+
+
+IF (WIDTH_LC>DX) THEN
+
+
+IF (WIDTH_LC>SILL_LENGTH) THEN
+ WIDTH_LC=SILL_LENGTH
+END IF
+
+
+SILL_P2=int(WIDTH_LC/DX)
+
+IF (SILL_P2<1) SILL_P2=1
+!IF (MeltFracDikeN1(BASE_X/2,BASE_Y-INT(MID_CRUST/DY))>0.05) THEN
+INT_TEMP=MeltCrock11 !newA(BASE_X/2,BASE_Y-INT(50000.0)/INT(HEIGHT/BASE_Y),BASE_Z/2)
+
+
+
+
+!write(121213,*)INT_TEMP
+
+
+
+
+!Determine temperature of melt
+
+
+
+!Place intrusion
+
+basestart=int((BASE_X/2))+int((.5-ran2(rand1))*REAL(InjectZone))
+baseend=basestart-5.0+int(10.0*ran2(rand7))
+IF (basestart==baseend) THEN
+basestart=basestart+1
+END IF
+rand1=rand1-1
+rand7=rand7-1
+
+basestartZ=int((BASE_Z/2))+int((.5-ran2(rand1))*REAL(InjectZoneZ))
+baseendZ=basestartZ-5.0+int(10.0*ran2(rand7))
+IF (basestartZ==baseendZ) THEN
+basestartZ=basestartZ+1
+END IF
+
+
+randomL=INT((INT(10000.)/(INT(HEIGHT)/BASE_Y))*ran2(rand2))!+int((HEIGHT-10000.)/(int(HEIGHT)/BASE_Y))   ! randomL is between height and upper intrusion floor --- currently 50 km
+DIKE_LENGTH=randomL-INT((HEIGHT-50000.)/(HEIGHT/BASE_Y))
+!write(121212,*)ZZ,randomL,DIKE_LENGTH
+!write(121212,*)int((HEIGHT-10000.)/REAL(HEIGHT/BASE_Y))
+!write(121212,*)BASE_Y-randomL
+
+
+!Check to see if intersecting melt pocket
+
+randomM=randomL
+
+DO J=int((HEIGHT-BASE_CRUST)/REAL(HEIGHT/BASE_Y))+200,(BASE_Y-randomL)
+ Bterm=1.0-((BASE_Y-1.0)/(basestart-baseend))*basestart
+ Mterm=((BASE_Y-1.0)/(basestart-baseend))
+ I=int(((REAL(J)-(Bterm))/Mterm))
+
+BtermZ=1.0-((BASE_Z-1.0)/(basestartZ-baseendZ))*basestartZ
+ MtermZ=((BASE_Z-1.0)/(basestartZ-baseendZ))
+ K=int(((REAL(J)-(BtermZ))/MtermZ))
+
+
+
+IF (MeltFracCrockN1(I,J,K)>CRITICAL_MELT) THEN
+ randomM=BASE_Y-J
+ !write(8211,*) 2,randomM,randomL
+ !write(8211,*) MeltFracCrockN1(I,J,K)
+ EXIT
+END IF
+
+
+IF (MeltFracDikeN1(I,J,K)>CRITICAL_MELT) THEN
+ randomM=BASE_Y-J
+ !write(8211,*)3,randomM,randomL
+ !write(8211,*) MeltFracDikeN1(I,J,K)
+ EXIT
+END IF
+
+
+END DO
+
+IF ((BASE_Y-randomM)<(BASE_Y-randomL)) THEN
+  randomL=randomM
+ ! write(8211,*) 4
+END IF
+
+
+!!!!!!!!!!
+
+
+
+DO J=int((HEIGHT-BASE_CRUST)/REAL(HEIGHT/BASE_Y))+1,(BASE_Y-randomL)
+ Bterm=1.0-((BASE_Y-1.0)/(basestart-baseend))*basestart
+ Mterm=((BASE_Y-1.0)/(basestart-baseend))
+ I=int(((REAL(J)-(Bterm))/Mterm))
+
+ BtermZ=1.0-((BASE_Z-1.0)/(basestartZ-baseendZ))*basestartZ
+ MtermZ=((BASE_Z-1.0)/(basestartZ-baseendZ))
+ K=int(((REAL(J)-(BtermZ))/MtermZ))
+
+
+
+!!DO KK=0,((PDIKE/2)-1)
+!!DO II=0,((PDIKE/2)-1)
+!!   MaterialSwitch(I-II,J,K-KK)=11
+!!   MaterialSwitch_B(I-II,J,K-KK)=11
+!!   oldA(I-II,J,K-KK)=Int_Temp
+!!   newA(I-II,J,K-KK)=Int_Temp
+!!   Temp(I-II,J,K-KK)=Int_Temp
+!!   MeltFracCrockN1(I-II,J,K-KK)=1.0
+!!S_VOLUME=S_VOLUME+deltaX*deltaY*deltaZ
+!!write(1122,*) I, I-II,K-KK
+!!END DO
+!!END DO
+
+
+!!DO KK=1,PDIKE/2
+!!DO II=1,PDIKE/2
+!!   MaterialSwitch(I+II,J,K+KK)=11
+!!   MaterialSwitch_B(I+II,J,K+KK)=11
+!!   oldA(I+II,J,K+KK)=Int_Temp
+!!   newA(I+II,J,K+KK)=Int_Temp
+!!   Temp(I+II,J,K+KK)=Int_Temp
+!!   MeltFracDikeN1(I+II,J,K+KK)=1.0
+!!S_VOLUME=S_VOLUME+deltaX*deltaY*deltaZ
+!!write(1122,*) I, I+II,K+KK
+!!END DO
+!!END DO
+
+END DO
+
+
+
+
+
+J=BASE_Y-randomL
+
+!DO J=50000,BASE_Y-5 !int((HEIGHT-50000.)/REAL(HEIGHT/BASE_Y)),BASE_Y-randomL !DUFEK4_19
+ Bterm=1.0-((BASE_Y-1.0)/(basestart-baseend))*basestart
+ Mterm=((BASE_Y-1.0)/(basestart-baseend))
+
+ I=int(((REAL(J)-(Bterm))/Mterm))
+
+BtermZ=1.0-((BASE_Z-1.0)/(basestartZ-baseendZ))*basestartZ
+MtermZ=((BASE_Z-1.0)/(basestartZ-baseendZ))
+
+ K=BASE_Z/2 !int(((REAL(J)-(BtermZ))/MtermZ))
+
+
+
+rand4=rand4-1
+randomX=int(ran2(rand4)*REAL(SILL_P2))
+
+DO WHILE(randomX<PDIKE)
+rand4=rand4-1
+randomX=int(ran2(rand4)*REAL(SILL_P2))
+END DO
+
+rand4=rand4-1
+randomZ=int(ran2(rand4)*REAL(SILL_P2))
+
+DO WHILE(randomZ<PDIKE)
+rand4=rand4-1
+randomZ=int(ran2(rand4)*REAL(SILL_P2))
+END DO
+
+DO KK=K-randomZ+1,K+randomZ
+DO II=I-randomX+1,I+randomX
+IF (II>1) THEN
+IF (KK>1) THEN
+DO JJ=1,SILL_WIDTH
+! IF (J>JJ) THEN
+   MaterialSwitch(II,J-SILL_WIDTH+JJ,KK)=11
+   MaterialSwitch_B(II,J-SILL_WIDTH+JJ,KK)=11
+   oldA(II,J-SILL_WIDTH+JJ,KK)=INT_Temp !DikeTemp
+   newA(II,J-SILL_WIDTH+JJ,KK)=INT_Temp !DikeTemp
+   Temp(II,J-SILL_WIDTH+JJ,KK)=INT_Temp !DikeTemp
+   MeltFracCrockN1(II,J-SILL_WIDTH+JJ,KK)=1.0
+S_VOLUME=S_VOLUME+deltaX*deltaY*deltaZ
+!END IF
+
+END DO
+END IF
+END IF
+
+ END DO
+END DO
+
+END IF !WIDTH_LC
+
+!END IF
+!END DO
+
+
+
+
+
+
+!-------- END Lower to Upper Melt Transport
+
+
+
+
+
+
+
+
+!write(112,200) MaterialSwitch_B
+
+!INTRUSION
+!END IF !20000
+!Shift
+
+!write(1144,*)ZZ
+
+!if (int(ZZ)==51) then
+!write(113,*)MaterialSwitch_B
+!end if
+
+!if (int(ZZ)==52) then
+!write(114,*)MaterialSwitch_B
+!end if
+
+!-----record the flux of basalt into 2D domain as a result of this dike event
+!This might need changed for 3D
+
+FLUX=FLUX+((length*((2*dikewidth)-1.0)))*deltax*deltaY
+! Yukariya volume=0 yap loopun ustune
+Volume=Volume+REAL((PDIKE*DIKE_LENGTH)*deltaX*deltaY)*1e-6+REAL((SILL_WIDTH*(randomX*2))*deltaX*deltaY)*1e-6
+ !write(1101,300) Volume, (PDIKE*DIKE_LENGTH)*deltaX*deltaY,(SILL_WIDTH*randomX)*deltaX*deltaY
+! write(1101,300) FLUX
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!set up k,cp and density
+DO I=1,BASE_X         
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+  IF (MaterialSwitch(I,J,K)/=2) THEN
+!   k(I,J)=kCrock
+!   cp(I,J)=cpCrock
+   kcond(I,J,K)=MeltFracCrockN1(I,J,K)*k_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*k_solid_crock
+   cp(I,J,K)=MeltFracCrockN1(I,J,K)*cp_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*cp_solid_crock
+   density(I,J,K)=MeltFracCrockN1(I,J,K)*rho_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*rho_solid_crock
+   ELSE IF (MaterialSwitch(I,J,K)==2) THEN
+
+  kcond(I,J,K)=MeltFracCrockN1(I,J,K)*k_melt_basalt+(1.0-MeltFracCrockN1(I,J,K))*k_solid_basalt
+   cp(I,J,K)=MeltFracCrockN1(I,J,K)*cp_melt_basalt+(1.0-MeltFracCrockN1(I,J,K))*cp_solid_basalt
+
+   density(I,J,K)= MeltFracDikeN1(I,J,K)*rho_melt_basalt+(1.0-MeltFracDikeN1(I,J,K))*rho_solid_basalt
+  END IF
+!  density(I,J)=(2.0-MaterialSwitch(I,J))*(MeltFracCrockN1(I,J)*rho_melt_crock+(1.0-MeltFracCrockN1(I,J))*rho_solid_crock) &
+!     +(1.0-(2.0-MaterialSwitch(I,J)))*(MeltFracDikeN1(I,J)*rho_melt_basalt+(1.0-MeltFracDikeN1(I,J))*rho_solid_basalt)
+ END DO
+END DO
+END DO
+L=L+1
+END DO  ! END OF RANDOM DIKING------------------------------------------------------!
+!-----------------------------------------------------------------------------------!
+
+
+
+END IF
+!JUNK
+
+!Melt Anomoly
+!IF (ZZ==10) THEN
+!DO I=BASE_X/2-15,BASE_X/2+15
+!DO J=BASE_Y-50,BASE_Y-20
+!DO K=BASE_Z/2-15,BASE_Z/2+15
+!   MaterialSwitch(I,J,K)=11
+!   MaterialSwitch_B(I,J,K)=11
+!   oldA(I,J,K)=INT_Temp !DikeTemp
+!   newA(I,J,K)=INT_Temp !DikeTemp
+!   Temp(I,J,K)=INT_Temp !DikeTemp
+!   MeltFracCrockN1(I,J,K)=1.0
+!S_VOLUME=S_VOLUME+deltaX*deltaY*deltaZ
+!END DO
+!END DO
+!END DO
+!END IF
+
+
+
+
+!----Now want to record the amount of melt immediately after diking event-----------!
+!-----------------------------------------------------------------------------------!
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+  IF (MAXTEMP(I,J,K)<newA(I,J,K)) THEN
+    MAXTEMP(I,J,K)=newA(I,J,K)
+  END IF
+ END DO
+END DO
+END DO
+
+
+TotalSMelt=0.0
+TotalMMelt=0.0
+
+DO I=2,BASE_X-1
+ DO J=2,BASE_Y-1
+  DO K=2,BASE_Z-1
+IF (MaterialSwitch(I,J,K)/=2) Then
+TotalSMelt=TotalSmelt+MeltFracCrockN1(I,J,K)
+ELSE IF (MaterialSwitch(I,J,K)==2) Then
+TotalMMelt=TotalMMelt+ MeltFracDikeN1(I,J,K)
+END IF
+ END DO
+END DO
+END DO
+
+write(499,*) TotalSMelt*deltaX*deltaY*deltaZ
+write(500,*) TotalMMelt*deltaX*deltaY*deltaZ
+
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+  ap0(I,J,K)=(density(I,J,K)*cp(I,J,K)*(deltaY*deltaX*deltaZ))/(deltaTime) 
+ END DO
+END DO
+END DO
+
+
+
+!-----------------------------------------------------------------------!
+
+!The 3-D conduction calculation here is performed by decoupling x,y,z directions, ADI
+
+!----------------------------------------------------------------------!
+
+
+
+!---------------------------
+DO J=1,BASE_Y
+!--------------------------Jloop
+
+DO K=2,BASE_Z-1
+!--------------------------Kloop
+
+  
+  IF (J>INT((HEIGHT-BASE_CRUST)/deltaY)) Then  
+  MeltDike=MeltDikeC
+  FreezeDike=FreezeDikeC
+  ELSE
+  MeltDike=1500.0
+  FreezeDike=1300.0
+  END IF      
+
+
+MeltDifference=100.0
+ErrorCount=1
+Residual1=.001
+ConvergeCheck=0.0
+
+DO WHILE (MeltDifference>Residual1*(10.0**ConvergeCheck))
+ErrorCount=ErrorCount+1
+
+IF (ErrorCount>100) THEN
+ConvergeCheck=ConvergeCheck+1.0
+END IF
+
+
+DO I=1,BASE_X
+
+
+
+  IF (MaterialSwitch(I,J,K)==1) Then
+     MeltCrock=MeltCrock1
+     FreezeCrock=FreezeCrock1
+
+    IF (newA(I,J,K)<=FreezeCrock) Then
+      Sp(I,J,K)=0.0
+      Su(I,J,K)=0.0
+    ELSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+        FSLOPECROCKER=FSLOPECROCKER1 !(-3.7035e-8)*(newA(I,J,K)**2)+(7.4216e-5)*(newA(I,J,K))-.0343
+        Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)* &
+            ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+     ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     Su(I,J,K)=0.0
+     Sp(I,J,K)=0.0
+   END IF  
+  END IF
+
+
+  IF (MaterialSwitch(I,J,K)==3) Then
+  MeltCrock=MeltCrock3
+  FreezeCrock=FreezeCrock3
+ 
+  IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+    ELSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+        FSLOPECROCKER=FSLOPECROCKER3 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+        Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)* &
+            ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+     ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     Su(I,J,K)=0.0
+     Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+  IF (MaterialSwitch(I,J,K)==4) Then
+  MeltCrock=MeltCrock4
+  FreezeCrock=FreezeCrock4
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+    ELSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+        FSLOPECROCKER=FSLOPECROCKER4 !(9.1198e-5)*newA(I,J,K)-9.9846e-2
+        Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)* &
+            ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+            
+     ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     Su(I,J,K)=0.0
+     Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+
+  IF (MaterialSwitch(I,J,K)==5) Then
+  MeltCrock=MeltCrock5
+  FreezeCrock=FreezeCrock5
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+    ELSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+        FSLOPECROCKER=FSLOPECROCKER5 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+        Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)* &
+            ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+            
+     ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     Su(I,J,K)=0.0
+     Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+
+  IF (MaterialSwitch(I,J,K)==6) Then
+  MeltCrock=MeltCrock6
+  FreezeCrock=FreezeCrock6
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+    ELSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+        FSLOPECROCKER=FSLOPECROCKER6 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+        Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)* &
+            ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+            
+     ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     Su(I,J,K)=0.0
+     Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+  IF (MaterialSwitch(I,J,K)==11) Then
+  MeltCrock=MeltCrock11
+  FreezeCrock=FreezeCrock11
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+    ELSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+        FSLOPECROCKER=FSLOPECROCKER11 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+        Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)* &
+            ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+            
+     ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     Su(I,J,K)=0.0
+     Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+
+
+ IF (MaterialSwitch(I,J,K)==2) Then
+   IF (newA(I,J,K)<=FreezeDike) Then
+   Sp(I,J,K)=0.0
+   Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>=FreezeDike .and. newA(I,J,K)<MeltDike) Then
+!DUFEK CHECKPOINT - Piecewise derivative
+
+      IF (newA(I,J,K)>=DikeInterv(1) .and. newA(I,J,K)<DikeInterv(2)) THEN
+        FSLOPEDIKER=fslopedike(1)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+           *((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(1))+DikeInterv(1))) 
+!(MeltFracDikeN2(I,J)+.379)/6.536e-4)
+!Su of the form deltaH*dF/dT*F-1*V where F-1 is the inverse mf reltionship (equation for T after Voller and Swaminathan)      
+      ELSE IF (newA(I,J,K)>=DikeInterv(2) .and. newA(I,J,K)<DikeInterv(3)) THEN
+        FSLOPEDIKER=fslopedike(2)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+               *((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(2))+DikeInterv(2)))           
+!*(MeltFracDikeN2(I,J)+1.778)/2.0e-3)
+
+       ELSE IF (newA(I,J,K)>=DikeInterv(3) .and. newA(I,J,K)<DikeInterv(4)) THEN
+        FSLOPEDIKER=fslopedike(3)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+               *((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(3))+DikeInterv(3)))         
+!  *(MeltFracDikeN2(I,J)+3.9655)/3.879e-3)
+        ELSE IF (newA(I,J,K)>=DikeInterv(4) .and. newA(I,J,K)<MeltDike) THEN
+        FSLOPEDIKER=fslopedike(4)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+               *((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(4))+DikeInterv(4)))
+ 
+     END IF
+
+ELSE IF (newA(I,J,K)>=MeltDike)Then
+    Su(I,J,K)=0.0             
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+END DO
+!write(3,*) Sp(50,50)
+
+DO I=2,BASE_X-1
+ d_X(I)=ap0(I,J,K)+alpha(I,J,K)+beta(I,J,K)-Sp(I,J,K)
+END DO
+d_X(1)=1.
+d_X(BASE_X)=1.
+
+!set up C terms--these terms sample laterally west and east
+
+!Set up P and Q terms
+
+
+P_X(1)=0.0!(1.0/((aP0(1,1))+alpha(1,1)))*alpha(1,1)
+Q_X(1)=E(J)!aP0(1,1)*(1.0/((aP0(1,1))+alpha(1,1)))*E(J)!oldA(1,J)
+
+!difference in P1Q1
+
+
+
+
+
+
+
+DO I=2,BASE_X-1
+P_X(I)=alpha(I,J,K)/(d_X(I)-beta(I,J,K)*P_X(I-1))
+Q_X(I)=((beta(I,J,K)*(Q_X(I-1))+Su(I,J,K)+ap0(I,J,K)*oldA(I,J,K))/(d_X(I)-beta(I,J,K)*P_X(I-1)))
+END DO
+
+!write(9812,*) ZZ,'Iloop'
+!write(9812,*) alpha(50,50,50),beta(50,50,50)
+!write(9812,*)ap0(50,50,50),d_X(50),P_X(50)
+!write(9812,*)Q_X(50)
+
+
+
+!Difference in base terms
+
+newA(BASE_X,J,K)=W(J)!(alpha(1,1)*Q_X(BASE_X-1)+oldA(BASE_X,J)*ap0(BASE_X,J))/(ap0(BASE_X,J)+alpha(1,1)-alpha(1,1)*P_X(BASE_X-1))
+
+
+DO I=BASE_X-1,1,-1
+newA(I,J,K)=(P_X(I)*newA(I+1,J,K))+Q_X(I)
+END DO
+
+
+
+!
+!---------------------Calculate MeltFraction-----------------
+!
+
+DO I=2,BASE_X-1
+
+
+
+ IF (MaterialSwitch(I,J,K)==1) Then
+  MeltCrock=MeltCrock1
+  FreezeCrock=FreezeCrock1
+  
+  IF (newA(I,J,K)<=FreezeCrock) Then
+   MeltFracCrockN3(I,J,K)=0.0
+  ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+      FSLOPECROCKER=FSLOPECROCKER1 !(-3.7035e-8)*(newA(I,J,K)**2)+(7.4216e-5)*(newA(I,J,K))-.0343
+!      MeltFracCrockN3(I,J)=((-1.2345e-8)*newA(I,J)**3)+((3.7108e-5)*newA(I,J)**2)+((-.0343)*newA(I,J))+10.0096
+
+
+!A=-1.038050E-06
+!B=4.633660E-03
+!C=-3.112640E+00
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*(newA(I,J)-INVFUNC_T)
+!write(12333,*)ZZ
+!write(12333,*)I,J
+!!write(12333,*)INVFUNC_T,MeltFracCrockN2(I,J)
+!write(12333,*)newA(I,J),FSLOPECROCKER
+!write(12333,*)MeltFracCrockN3(I,J)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+!write(12333,*)'AltT:', MeltFracCrockN2(I,J)*(MeltCrock-FreezeCrock)+FreezeCrock
+!write(12333,*)'AltM:',MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-(MeltFracCrockN2(I,J)&
+!  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+  
+             IF (MeltFracCrockN3(I,J,K)>1.0) Then
+                       MeltFracCrockN3(I,J,K)=1.0
+             END IF
+
+              IF (MeltFracCrockN3(I,J,K)<0.0) Then
+                      MeltFracCrockN3(I,J,K)=0.0
+              END IF
+
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+ END IF
+
+
+ IF (MaterialSwitch(I,J,K)==3) Then
+  MeltCrock=MeltCrock3
+  FreezeCrock=FreezeCrock3
+  
+IF (newA(I,J,K)<=FreezeCrock) Then
+   MeltFracCrockN3(I,J,K)=0.0
+  ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+      FSLOPECROCKER=FSLOPECROCKER3 !(-2.9e-5)*newA(I,J,K)+3.92e-2 !(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+     ! MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+             IF (MeltFracCrockN3(I,J,K)>1.0) Then
+                       MeltFracCrockN3(I,J,K)=1.0
+             END IF
+
+              IF (MeltFracCrockN3(I,J,K)<0.0) Then
+                      MeltFracCrockN3(I,J,K)=0.0
+              END IF
+
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+ END IF
+
+
+
+ IF (MaterialSwitch(I,J,K)==4) Then
+  MeltCrock=MeltCrock4
+  FreezeCrock=FreezeCrock4
+
+IF (newA(I,J,K)<=FreezeCrock) Then
+   MeltFracCrockN3(I,J,K)=0.0
+  ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+      FSLOPECROCKER=FSLOPECROCKER4 !(9.1198e-5)*newA(I,J,K)-9.9846e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+    !  MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+             IF (MeltFracCrockN3(I,J,K)>1.0) Then
+                       MeltFracCrockN3(I,J,K)=1.0
+             END IF
+
+              IF (MeltFracCrockN3(I,J,K)<0.0) Then
+                      MeltFracCrockN3(I,J,K)=0.0
+              END IF
+
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+ END IF
+
+
+ IF (MaterialSwitch(I,J,K)==5) Then
+  MeltCrock=MeltCrock5
+  FreezeCrock=FreezeCrock5
+
+IF (newA(I,J,K)<=FreezeCrock) Then
+   MeltFracCrockN3(I,J,K)=0.0
+  ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+      FSLOPECROCKER=FSLOPECROCKER5 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+  !    MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+
+             IF (MeltFracCrockN3(I,J,K)>1.0) Then
+                       MeltFracCrockN3(I,J,K)=1.0
+             END IF
+
+              IF (MeltFracCrockN3(I,J,K)<0.0) Then
+                      MeltFracCrockN3(I,J,K)=0.0
+              END IF
+
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+ END IF
+
+
+ IF (MaterialSwitch(I,J,K)==6) Then
+  MeltCrock=MeltCrock6
+  FreezeCrock=FreezeCrock6
+
+IF (newA(I,J,K)<=FreezeCrock) Then
+   MeltFracCrockN3(I,J,K)=0.0
+  ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+      FSLOPECROCKER=FSLOPECROCKER6 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+      !MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+             IF (MeltFracCrockN3(I,J,K)>1.0) Then
+                       MeltFracCrockN3(I,J,K)=1.0
+             END IF
+
+              IF (MeltFracCrockN3(I,J,K)<0.0) Then
+                      MeltFracCrockN3(I,J,K)=0.0
+              END IF
+
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+ END IF
+
+
+ IF (MaterialSwitch(I,J,K)==11) Then
+  MeltCrock=MeltCrock11
+  FreezeCrock=FreezeCrock11
+
+IF (newA(I,J,K)<=FreezeCrock) Then
+   MeltFracCrockN3(I,J,K)=0.0
+  ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+!Derivative
+      FSLOPECROCKER=FSLOPECROCKER11 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+      !MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+
+             IF (MeltFracCrockN3(I,J,K)>1.0) Then
+                       MeltFracCrockN3(I,J,K)=1.0
+             END IF
+
+              IF (MeltFracCrockN3(I,J,K)<0.0) Then
+                      MeltFracCrockN3(I,J,K)=0.0
+              END IF
+
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+ END IF
+
+
+
+   IF (MaterialSwitch(I,J,K)==2) Then
+    IF (newA(I,J,K)<=FreezeDike) Then
+     MeltFracDikeN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>=FreezeDike .and. newA(I,J,K)<MeltDike) Then
+      IF (newA(I,J,K)>=DikeInterv(1) .and. newA(I,J,K)<DikeInterv(2)) THEN
+        FSLOPEDIKER=fslopedike(1)
+        MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(1))+DikeInterv(1)))
+
+      ELSE IF (newA(I,J,K)>=DikeInterv(2) .and. newA(I,J,K)<DikeInterv(3)) THEN
+        FSLOPEDIKER=fslopedike(2)
+         MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(2))+DikeInterv(2)))
+
+
+       ELSE IF (newA(I,J,K)>=DikeInterv(3) .and. newA(I,J,K)< DikeInterv(4)) THEN
+        FSLOPEDIKER=fslopedike(3)
+         MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(3))+DikeInterv(3)))
+      
+       ELSE IF (newA(I,J,K)>=DikeInterv(4) .and. newA(I,J,K)< MeltDike) THEN
+        FSLOPEDIKER=fslopedike(4)
+         MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(4))+DikeInterv(4)))
+
+
+      END IF
+
+  
+    
+
+   IF (MeltFracDikeN3(I,J,K)>1.0) THEN
+     MeltFracDikeN3(I,J,K)=1.0
+   END IF
+   
+   IF (MeltFracDikeN3(I,J,K)<0.0) THEN
+    MeltFracDikeN3(I,J,K)=0.0
+   END IF
+
+  ELSE IF (newA(I,J,K)>=MeltDike)Then
+    MeltFracDikeN3(I,J,K)=1.0
+   END IF
+  END IF
+ END DO
+
+
+MeltDifference=0.0
+
+DO I=2,BASE_X-1
+ IF (J>1 .and. J<BASE_Y) THEN
+  IF (K>1 .and. K<BASE_Y) THEN
+  If(MaterialSwitch(I,J,K)/=2) THEN
+   MeltDifference=MeltDifference+abs(MeltFracCrockN3(I,J,K)-MeltFracCrockN2(I,J,K))
+   !write(12123,*)'MaterialSwitch'
+   !write(12123,*)MaterialSwitch(I,J)
+   !write(12123,*) 'MeltDifference',MeltDifference
+   !write(12123,*) 'N2',MeltFracCrockN3(I,J)
+   !write(12123,*) 'N3',MeltFracCrockN2(I,J)
+  ELSE IF (MaterialSwitch(I,J,K)==2) THEN
+   MeltDifference=MeltDifference+abs(MeltFracDikeN3(I,J,K)-MeltFracDikeN2(I,J,K))
+  ! write(12123,*)'MaterialSwitch','Dike'
+  ! write(12123,*)MaterialSwitch(I,J)
+  ! write(12123,*) 'MeltDifference',MeltDifference
+  ! write(12123,*) 'N2',MeltFracDikeN3(I,J)
+  ! write(12123,*) 'N3',MeltFracDikeN2(I,J)
+  END IF
+ END IF 
+END IF
+!IF (MeltFracCrockN3(I,J)>0.0 .OR. MeltFracDikeN3(I,J)>0.0) THEN
+!write(12123,*)'Check'
+!write(12123,*) ZZ,I,J
+!write(12123,*)'Diff',MeltDifference
+!write(12123,*) 'CN2',MeltFracCrockN3(I,J)
+!write(12123,*) 'CN3',MeltFracCrockN2(I,J)
+!write(12123,*) 'DN2',MeltFracDikeN3(I,J)
+!write(12123,*) 'DN3',MeltFracDikeN2(I,J)
+!END IF
+
+END DO
+
+
+
+
+
+!write(12123,*)2,ZZ,MeltDifference
+!CHECKPOINT
+DO I=2,BASE_X-1
+  MeltFracDikeN2(I,J,K)=relax1*MeltFracDikeN3(I,J,K)+(1.0-relax1)*( MeltFracDikeN2(I,J,K))
+  MeltFracCrockN2(I,J,K)=relax1*MeltFracCrockN3(I,J,K)+(1.0-relax1)*(MeltFracDikeN2(I,J,K))
+END DO
+
+END DO
+
+!END MELT DIFFERENCE MeltDifference
+
+
+!CHECKPOINT
+!DO I=2,BASE_X-1
+!  MeltFracDikeN2(I,J)=relax1*MeltFracDikeN3(I,J)+(1.0-relax1)*(MeltFracDikeN2(I,J))
+!  MeltFracCrockN2(I,J)=relax1*MeltFracCrockN3(I,J)+(1.0-relax1)*(MeltFracDikeN2(I,J))
+!END DO
+
+
+
+
+IF (ConvergeCheck>1.0) THEN
+write(501,*) ConvergeCheck
+END IF
+
+
+
+END DO
+!the K loop
+
+END DO
+!the J loop
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+  IF (MeltFracDikeN2(I,J,K)<0.0) THEN
+   MeltFracDikeN2(I,J,K)=0.0
+  ELSE IF (MeltFracDikeN2(I,J,K)>1.0) THEN
+   MeltFracDikeN2(I,J,K)=1.0
+  END IF
+
+
+IF (J<BASE_Y-INT(BASE_CRUST/deltaY)) THEN
+  MeltFracDikeN2(I,J,K)=0.0
+END IF
+
+
+
+  END DO
+ END DO
+END DO
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DO K=1,BASE_Z
+DO M=1,BASE_Y
+DO I=1,BASE_X
+
+Temp(I,M,K)=newA(I,M,K)
+!oldA(I,M)=newA(I,M)
+END DO
+END DO
+END DO
+
+
+
+
+
+!---------------------------
+DO I=2,BASE_X-1
+!----------I loop
+
+
+!---------------------------
+DO K=2,BASE_Z-1
+!----------K loop
+
+
+MeltDifference=100.0
+ErrorCount=1
+Residual2=.001
+ConvergeCheck=0.0
+
+DO WHILE (MeltDifference>Residual2*(10.0**ConvergeCheck))
+!write(12123,*)2,ZZ,MeltDifference
+!write(12123,*)I,Residual2*(10.0**ConvergeCheck)
+
+
+ErrorCount=ErrorCount+1
+
+IF (ErrorCount>100) THEN
+ConvergeCheck=ConvergeCheck+1.0
+END IF
+
+
+
+
+
+
+!DO WHILE (MeltDifference>.00001)
+
+DO J=1,BASE_Y
+
+
+!Determine if in Crust or refractory mantle
+IF (J>INT((HEIGHT-BASE_CRUST)/deltaY)) THEN
+MeltDike=MeltDikeC
+FreezeDike=FreezeDikeC
+ELSE
+!refrac - arbitrarily high value
+MeltDike=1500.0
+FreezeDike=1300.0
+END IF
+
+
+
+
+  IF (MaterialSwitch(I,J,K)==1) Then
+  MeltCrock=MeltCrock1
+  FreezeCrock=FreezeCrock1
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+
+FSLOPECROCKER=FSLOPECROCKER1 !(-3.7035e-8)*(newA(I,J,K)**2)+(7.4216e-5)*(newA(I,J,K))-.0343
+
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY)/(deltaTime)
+    
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF  
+  END IF
+
+
+
+
+ IF (MaterialSwitch(I,J,K)==3) Then
+   MeltCrock=MeltCrock3
+   FreezeCrock=FreezeCrock3
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+    FSLOPECROCKER=FSLOPECROCKER3 !(-2.9e-5)*newA(I,J,K)+3.92e-2 ! (-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+
+ IF (MaterialSwitch(I,J,K)==4) Then
+   MeltCrock=MeltCrock4
+   FreezeCrock=FreezeCrock4
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+    FSLOPECROCKER=FSLOPECROCKER4 !(9.1198e-5)*newA(I,J,K)-9.9846e-2
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+         
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+ IF (MaterialSwitch(I,J,K)==5) Then
+   MeltCrock=MeltCrock5
+   FreezeCrock=FreezeCrock5
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+    FSLOPECROCKER=FSLOPECROCKER5 !(-2.9e-5)*newA(I,J,K)+3.92e-2 !
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+
+ IF (MaterialSwitch(I,J,K)==6) Then
+   MeltCrock=MeltCrock6
+   FreezeCrock=FreezeCrock6
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+    FSLOPECROCKER=FSLOPECROCKER6 !(-2.9e-5)*newA(I,J,K)+3.92e-2 !
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+ IF (MaterialSwitch(I,J,K)==11) Then
+   MeltCrock=MeltCrock11
+   FreezeCrock=FreezeCrock11
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+    FSLOPECROCKER= FSLOPECROCKER11!(-2.9e-5)*newA(I,J,K)+3.92e-2 !
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+
+
+
+ IF (MaterialSwitch(I,J,K)==2) Then
+   IF (newA(I,J,K)<=FreezeDike) Then
+   Sp(I,J,K)=0.0
+   Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>=FreezeDike .and. newA(I,J,K)<MeltDike) Then
+      IF (newA(I,J,K)>=DikeInterv(1) .and. newA(I,J,K)<DikeInterv(2)) THEN
+        FSLOPEDIKER=fslopedike(1)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+*((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(1))+DikeInterv(1)))         
+!  *(MeltFracDikeN2(I,J)+.379)/6.536e-4)
+
+      ELSE IF (newA(I,J,K)>=DikeInterv(2) .and. newA(I,J,K)<DikeInterv(3)) THEN
+        FSLOPEDIKER=fslopedike(2)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+*((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(2))+DikeInterv(2)))         
+ ! *(MeltFracDikeN2(I,J)+1.778)/2.0e-3)
+
+       ELSE IF (newA(I,J,K)>=DikeInterv(3) .and. newA(I,J,K)<DikeInterv(4)) THEN
+        FSLOPEDIKER=fslopedike(3)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+*((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(3))+DikeInterv(3)))
+!           *(MeltFracDikeN2(I,J)+3.9655)/3.879e-3)
+     
+       ELSE IF (newA(I,J,K)>=DikeInterv(4) .and. newA(I,J,K)<MeltDike) THEN
+        FSLOPEDIKER=fslopedike(4)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+*((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(4))+DikeInterv(4)))
+
+ END IF
+
+ELSE IF (newA(I,J,K)>=MeltDike)Then
+    Su(I,J,K)=0.0             
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+END DO
+
+
+!write(3,*) Sp(50,50)
+
+DO J=2,BASE_Y-1
+ d_Y(J)=ap0(I,J,K)+alphaX(I,J,K)+betaX(I,J,K)-Sp(I,J,K)
+END DO
+d_Y(1)=1.
+d_Y(BASE_Y)=1.
+
+!oldA(I,1)=600.0
+
+!Set up P and Q terms
+
+!P(1)=-1.0
+P_Y(1)=0.0
+!Q(1)=oldA(I,1)+oldA(I,2)
+Q_Y(1)=1000.0 !bottom_mark  !MARK1  W(I)
+
+
+!P(1)=(1.0/((aP0(1,1))+alpha(1,1)))*alpha(1,1)
+!Q(1)=ap0(1,1)*(1.0/((aP0(1,1))+alpha(1,1)))*oldA(I,1)
+
+
+DO J=2,BASE_Y-1
+P_Y(J)=alphaX(I,J,K)/(d_Y(J)-betaX(I,J,K)*P_Y(J-1))
+Q_Y(J)=((betaX(I,J,K)*(Q_Y(J-1))+Su(I,J,K)+ap0(I,J,K)*Temp(I,J,K))/(d_Y(J)-betaX(I,J,K)*P_Y(J-1)))
+END DO
+
+Q_Y(BASE_Y)=0.0!E(I) !MARK
+newA(I,BASE_Y,K)=Q_Y(BASE_Y)
+
+
+DO J=BASE_Y-1,1,-1
+ newA(I,J,K)=(P_Y(J)*newA(I,J+1,K))+Q_Y(J)
+END DO
+
+
+
+!
+!---------------------Calculate MeltFraction-----------------
+!
+
+DO J=2,BASE_Y-1
+
+
+
+!Determine if in Crust or refractory mantle
+IF (J>INT((HEIGHT-BASE_CRUST)/deltaY)) THEN
+MeltDike=MeltDikeC
+FreezeDike=FreezeDikeC
+ELSE
+!refrac - arbitrarily high value
+MeltDike=1500.0
+FreezeDike=1300.0
+END IF
+
+
+
+
+
+ IF (MaterialSwitch(I,J,K)==1) Then
+  MeltCrock=MeltCrock1
+  FreezeCrock=FreezeCrock1
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+   MeltFracCrockN3(I,J,K)=0.0
+  ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+
+FSLOPECROCKER=FSLOPECROCKER1 !(-3.7035e-8)*(newA(I,J,K)**2)+(7.4216e-5)*(newA(I,J,K))-.0343
+!FSLOPECROCKER=(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+!FSLOPECROCKER=5.33636e-6*newA(I,J)-1.57347e-3
+
+
+!MeltFracCrockN3(I,J)=((-1.2345e-8)*newA(I,J)**3)+((3.7108e-5)*newA(I,J)**2)+((-.0343)*newA(I,J))+10.0096
+
+!A=-1.038050E-06
+!B=4.633660E-03
+!C=-3.112640E+00
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+!CHECKPOINT
+
+   IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   END IF
+
+IF (MaterialSwitch(I,J,K)==3) Then
+  MeltCrock=MeltCrock3
+  FreezeCrock=FreezeCrock3
+ 
+  IF (newA(I,J,K)<=FreezeCrock) Then
+     MeltFracCrockN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+      FSLOPECROCKER=FSLOPECROCKER3 !(-2.9e-5)*newA(I,J,K)+3.92e-2 !(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+!      MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1 !MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-(MeltFracCrockN2(I,J)&
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock)) 
+
+  IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+END IF
+
+
+IF (MaterialSwitch(I,J,K)==4) Then
+  MeltCrock=MeltCrock4
+  FreezeCrock=FreezeCrock4
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+     MeltFracCrockN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+      FSLOPECROCKER=FSLOPECROCKER4 !(9.1198e-5)*newA(I,J,K)-9.9846e-2
+!      MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock)) 
+   IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+END IF
+
+IF (MaterialSwitch(I,J,K)==5) Then
+  MeltCrock=MeltCrock5
+  FreezeCrock=FreezeCrock5
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+     MeltFracCrockN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+      FSLOPECROCKER=FSLOPECROCKER5 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+   !   MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock)) 
+  
+ IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+END IF
+
+IF (MaterialSwitch(I,J,K)==6) Then
+  MeltCrock=MeltCrock6
+  FreezeCrock=FreezeCrock6
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+     MeltFracCrockN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+      FSLOPECROCKER=FSLOPECROCKER6 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+!      MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock)) 
+
+   IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+END IF
+
+IF (MaterialSwitch(I,J,K)==11) Then
+  MeltCrock=MeltCrock11
+  FreezeCrock=FreezeCrock11
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+     MeltFracCrockN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+      FSLOPECROCKER= FSLOPECROCKER11!(-2.9e-5)*newA(I,J,K)+3.92e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+ !     MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock)) 
+
+   IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+END IF
+
+
+
+   IF (MaterialSwitch(I,J,K)==2) Then
+    IF (newA(I,J,K)<=FreezeDike) Then
+     MeltFracDikeN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>=FreezeDike .and. newA(I,J,K)<MeltDike) Then
+!DUFEK CHECKPOINT
+
+    IF (newA(I,J,K)>=DikeInterv(1) .and. newA(I,J,K)<DikeInterv(2)) THEN
+        FSLOPEDIKER=fslopedike(1)
+        MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(1))+DikeInterv(1)))
+
+!((MeltFracDikeN2(I,J)&
+           !  +.379)/6.536e-4))
+
+
+      ELSE IF (newA(I,J,K)>=DikeInterv(2) .and. newA(I,J,K)<DikeInterv(3)) THEN
+        FSLOPEDIKER=fslopedike(2)
+         MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(2))+DikeInterv(2)))
+
+!((MeltFracDikeN2(I,J)&
+             !+1.778)/2.0e-3))
+
+
+       ELSE IF (newA(I,J,K)>=DikeInterv(3) .and. newA(I,J,K)<DikeInterv(4)) THEN
+        FSLOPEDIKER=fslopedike(3)
+         MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(3))+DikeInterv(3)))
+
+!((MeltFracDikeN2(I,J)&
+!             +3.9655)/3.879e-3))
+
+       ELSE IF (newA(I,J,K)>=DikeInterv(4) .and. newA(I,J,K)<MeltDike) THEN
+        FSLOPEDIKER=fslopedike(4)
+         MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(4))+DikeInterv(4)))
+
+
+      END IF
+
+
+!MeltFracDikeN3(I,J)=MeltFracDikeN2(I,J)+relax*FSLOPEDIKER*(newA(I,J)-(MeltFracDikeN2(I,J)*(MeltDike-FreezeDike)+FreezeDike))
+   !MeltFracCrockN3(I,J)=MeltFracDikeN2(I,J)+relax*((newA(I,J)-FreezeDike)/(MeltDike-FreezeDike)-MeltFracDikeN2(I,J))
+ IF (MeltFracDikeN3(I,J,K)>1.0) THEN
+     MeltFracDikeN3(I,J,K)=1.0
+  END IF
+   IF (MeltFracDikeN3(I,J,K)<0.0) THEN
+    MeltFracDikeN3(I,J,K)=0.0
+   END IF
+ELSE IF (newA(I,J,K)>=MeltDike)Then
+    MeltFracDikeN3(I,J,K)=1.0
+   END IF
+
+  END IF
+ END DO
+
+
+MeltDifference=0.0
+
+DO J=2,BASE_Y-1
+  If(MaterialSwitch(I,J,K)/=2 ) THEN
+   MeltDifference=MeltDifference+abs(MeltFracCrockN3(I,J,K)-MeltFracCrockN2(I,J,K))
+  ELSE IF (MaterialSwitch(I,J,K)==2) THEN
+   MeltDifference=MeltDifference+abs(MeltFracDikeN3(I,J,K)-MeltFracDikeN2(I,J,K))
+  END IF
+ END DO
+
+
+DO J=2,BASE_Y-1
+  MeltFracDikeN2(I,J,K)=relax1*MeltFracDikeN3(I,J,K)+(1.0-relax1)*MeltFracDikeN2(I,J,K)
+  MeltFracCrockN2(I,J,K)=relax1*MeltFracCrockN3(I,J,K)+(1.0-relax1)* MeltFracCrockN2(I,J,K)
+ END DO
+
+END DO
+
+!END MELT DIFFERENCE MeltDifference
+
+
+!write(12123,*) 1,ZZ,MeltDifference
+
+
+IF (ConvergeCheck>1.0) THEN
+write(501,*) ConvergeCheck
+END IF
+
+
+
+END DO
+!the I loop
+
+END DO
+!the K loop
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!NEW ADI FOR Z
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+DO K=1,BASE_Z
+DO M=1,BASE_Y
+DO I=1,BASE_X
+
+Temp(I,M,K)=newA(I,M,K)
+!oldA(I,M)=newA(I,M)
+END DO
+END DO
+END DO
+
+JUNK=.TRUE.
+IF (JUNK) THEN
+
+!---------------------------
+DO I=2,BASE_X-1
+!----------I loop
+
+
+!---------------------------
+DO J=1,BASE_Y
+!----------J loop
+
+
+MeltDifference=100.0
+ErrorCount=1
+Residual2=.001
+ConvergeCheck=0.0
+
+DO WHILE (MeltDifference>Residual2*(10.0**ConvergeCheck))
+!write(12123,*)2,ZZ,MeltDifference
+!write(12123,*)I,Residual2*(10.0**ConvergeCheck)
+
+
+ErrorCount=ErrorCount+1
+
+IF (ErrorCount>100) THEN
+ConvergeCheck=ConvergeCheck+1.0
+END IF
+
+
+
+
+
+
+!DO WHILE (MeltDifference>.00001)
+
+DO K=1,BASE_Z
+
+
+!Determine if in Crust or refractory mantle
+IF (J>INT((HEIGHT-BASE_CRUST)/deltaY)) THEN
+MeltDike=MeltDikeC
+FreezeDike=FreezeDikeC
+ELSE
+!refrac - arbitrarily high value
+MeltDike=1500.0
+FreezeDike=1300.0
+
+
+END IF
+
+
+
+
+  IF (MaterialSwitch(I,J,K)==1) Then
+  MeltCrock=MeltCrock1
+  FreezeCrock=FreezeCrock1
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+
+FSLOPECROCKER=FSLOPECROCKER1 !(-3.7035e-8)*(newA(I,J,K)**2)+(7.4216e-5)*(newA(I,J,K))-.0343
+
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY)/(deltaTime)
+
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+
+
+
+ IF (MaterialSwitch(I,J,K)==3) Then
+   MeltCrock=MeltCrock3
+   FreezeCrock=FreezeCrock3
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+    FSLOPECROCKER=FSLOPECROCKER3 !(-2.9e-5)*newA(I,J,K)+3.92e-2 !
+
+
+ Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+
+ IF (MaterialSwitch(I,J,K)==4) Then
+   MeltCrock=MeltCrock4
+   FreezeCrock=FreezeCrock4
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+    FSLOPECROCKER=FSLOPECROCKER4 !(9.1198e-5)*newA(I,J,K)-9.9846e-2
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+ IF (MaterialSwitch(I,J,K)==5) Then
+   MeltCrock=MeltCrock5
+   FreezeCrock=FreezeCrock5
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+
+
+!DUFEK CHECKPOINT
+    FSLOPECROCKER=FSLOPECROCKER5 !(-2.9e-5)*newA(I,J,K)+3.92e-2 !
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+
+ IF (MaterialSwitch(I,J,K)==6) Then
+   MeltCrock=MeltCrock6
+   FreezeCrock=FreezeCrock6
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+    FSLOPECROCKER=FSLOPECROCKER6 !(-2.9e-5)*newA(I,J,K)+3.92e-2 !
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+ IF (MaterialSwitch(I,J,K)==11) Then
+   MeltCrock=MeltCrock11
+   FreezeCrock=FreezeCrock11
+
+   IF (newA(I,J,K)<=FreezeCrock) Then
+    Sp(I,J,K)=0.0
+    Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+    FSLOPECROCKER= FSLOPECROCKER11 !(-2.9e-5)*newA(I,J,K)+3.92e-2 !
+    Sp(I,J,K)=-1*(LatentCrock*density(I,J,K)*FSLOPECROCKER*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=(LatentCrock*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+    Su(I,J,K)=Su(I,J,K)* &
+         ((MeltFracCrockN1(I,J,K)-MeltFracCrockN2(I,J,K))+FSLOPECROCKER*(MeltFracCrockN2(I,J,K)*(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   ELSE IF (newA(I,J,K)>=MeltCrock)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+
+
+
+
+ IF (MaterialSwitch(I,J,K)==2) Then
+   IF (newA(I,J,K)<=FreezeDike) Then
+   Sp(I,J,K)=0.0
+   Su(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>=FreezeDike .and. newA(I,J,K)<MeltDike) Then
+      IF (newA(I,J,K)>=DikeInterv(1) .and. newA(I,J,K)<DikeInterv(2)) THEN
+        FSLOPEDIKER=fslopedike(1)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+*((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(1))+DikeInterv(1)))
+!  *(MeltFracDikeN2(I,J)+.379)/6.536e-4)
+
+      ELSE IF (newA(I,J,K)>=DikeInterv(2) .and. newA(I,J,K)<DikeInterv(3)) THEN
+        FSLOPEDIKER=fslopedike(2)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+*((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(2))+DikeInterv(2)))
+ ! *(MeltFracDikeN2(I,J)+1.778)/2.0e-3)
+
+       ELSE IF (newA(I,J,K)>=DikeInterv(3) .and. newA(I,J,K)<DikeInterv(4)) THEN
+        FSLOPEDIKER=fslopedike(3)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+ Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+*((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(3))+DikeInterv(3)))
+!           *(MeltFracDikeN2(I,J)+3.9655)/3.879e-3)
+
+       ELSE IF (newA(I,J,K)>=DikeInterv(4) .and. newA(I,J,K)<MeltDike) THEN
+        FSLOPEDIKER=fslopedike(4)
+        Sp(I,J,K)=-1*(LatentDike*density(I,J,K)*FSLOPEDIKER*deltaX*deltaY*deltaZ)/(deltaTime)
+
+        Su(I,J,K)=(LatentDike*density(I,J,K)*deltaX*deltaY*deltaZ)/(deltaTime)
+        Su(I,J,K)=Su(I,J,K)*((MeltFracDikeN1(I,J,K)-MeltFracDikeN2(I,J,K))+FSLOPEDIKER&
+*((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(4))+DikeInterv(4)))
+
+ END IF
+
+ELSE IF (newA(I,J,K)>=MeltDike)Then
+    Su(I,J,K)=0.0
+    Sp(I,J,K)=0.0
+   END IF
+  END IF
+END DO
+!K loop
+
+!write(3,*) Sp(50,50)
+
+DO K=2,BASE_Z-1
+ d_Z(K)=ap0(I,J,K)+alphaZ(I,J,K)+betaZ(I,J,K)-Sp(I,J,K)
+END DO
+d_Z(1)=1.
+d_Z(BASE_Z)=1.
+
+!oldA(I,1)=600.0
+
+!Set up P and Q terms
+
+!P(1)=-1.0
+P_Z(1)=0.0
+!Q(1)=oldA(I,1)+oldA(I,2)
+Q_Z(1)=E(J) !bottom_mark  !MARK1  W(I)
+
+
+!P(1)=(1.0/((aP0(1,1))+alpha(1,1)))*alpha(1,1)
+!Q(1)=ap0(1,1)*(1.0/((aP0(1,1))+alpha(1,1)))*oldA(I,1)
+
+DO K=2,BASE_Z-1
+P_Z(K)=alphaZ(I,J,K)/(d_Z(K)-betaZ(I,J,K)*P_Z(K-1))
+Q_Z(K)=((betaZ(I,J,K)*(Q_Z(K-1))+Su(I,J,K)+ap0(I,J,K)*Temp(I,J,K))/(d_Z(K)-betaZ(I,J,K)*P_Z(K-1)))
+END DO
+
+!write(9812,*) ZZ,'Kloop'
+!write(9812,*) alphaZ(50,50,50),betaZ(50,50,50)
+!write(9812,*)ap0(50,50,50),d_Z(50),P_Z(50)
+!write(9812,*)Q_Z(50)
+
+!Q_Z(BASE_Z)=W(J)!E(I) !MARK
+newA(I,J,BASE_Z)=W(J) !Q_Y(BASE_Z)
+
+
+DO K=BASE_Z-1,1,-1
+ newA(I,J,K)=(P_Z(K)*newA(I,J,K+1))+Q_Z(K)
+END DO
+
+
+
+!
+!---------------------Calculate MeltFraction-----------------
+!
+
+DO K=2,BASE_Z-1
+
+
+
+!Determine if in Crust or refractory mantle
+IF (J>INT((HEIGHT-BASE_CRUST)/deltaY)) THEN
+MeltDike=MeltDikeC
+FreezeDike=FreezeDikeC
+ELSE
+!refrac - arbitrarily high value
+MeltDike=1500.0
+FreezeDike=1300.0
+END IF
+
+
+
+
+ IF (MaterialSwitch(I,J,K)==1) Then
+  MeltCrock=MeltCrock1
+  FreezeCrock=FreezeCrock1
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+   MeltFracCrockN3(I,J,K)=0.0
+  ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+
+FSLOPECROCKER=FSLOPECROCKER1 !(-3.7035e-8)*(newA(I,J,K)**2)+(7.4216e-5)*(newA(I,J,K))-.0343
+!FSLOPECROCKER=(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+!FSLOPECROCKER=5.33636e-6*newA(I,J)-1.57347e-3
+
+
+!MeltFracCrockN3(I,J)=((-1.2345e-8)*newA(I,J)**3)+((3.7108e-5)*newA(I,J)**2)+((-.0343)*newA(I,J))+10.0096
+
+!A=-1.038050E-06
+!B=4.633660E-03
+!C=-3.112640E+00
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+!CHECKPOINT
+
+   IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   END IF
+
+IF (MaterialSwitch(I,J,K)==3) Then
+  MeltCrock=MeltCrock3
+ FreezeCrock=FreezeCrock3
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+     MeltFracCrockN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+      FSLOPECROCKER=FSLOPECROCKER3 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+!      MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+!      !MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-(MeltFracCrockN2(I,J)&
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+  IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+END IF
+
+
+IF (MaterialSwitch(I,J,K)==4) Then
+  MeltCrock=MeltCrock4
+  FreezeCrock=FreezeCrock4
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+     MeltFracCrockN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+      FSLOPECROCKER=FSLOPECROCKER4 !(9.1198e-5)*newA(I,J,K)-9.9846e-2
+!      MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+   IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+END IF
+
+IF (MaterialSwitch(I,J,K)==5) Then
+  MeltCrock=MeltCrock5
+  FreezeCrock=FreezeCrock5
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+     MeltFracCrockN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+      FSLOPECROCKER=FSLOPECROCKER5 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+   !   MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+ IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+  IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+END IF
+
+IF (MaterialSwitch(I,J,K)==6) Then
+  MeltCrock=MeltCrock6
+  FreezeCrock=FreezeCrock6
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+     MeltFracCrockN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+      FSLOPECROCKER=FSLOPECROCKER6 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+!      MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+END IF
+
+IF (MaterialSwitch(I,J,K)==11) Then
+  MeltCrock=MeltCrock11
+
+
+ FreezeCrock=FreezeCrock11
+
+  IF (newA(I,J,K)<=FreezeCrock) Then
+     MeltFracCrockN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>FreezeCrock .and. newA(I,J,K)<MeltCrock) Then
+!DUFEK CHECKPOINT
+      FSLOPECROCKER=FSLOPECROCKER11 !(-2.9e-5)*newA(I,J,K)+3.92e-2
+!(-26.66217e-10*(newA(I,J)**2))+(9.77664e-6*(newA(I,J)))-3.40261e-3
+ !     MeltFracCrockN3(I,J)=(-1.455e-5)*(newA(I,J)**2)+(3.922e-2*newA(I,J))-2.535e1
+
+!A=-1.455420E-05
+!B=3.922030E-02
+!C=-2.534870E+01
+!INVFUNC_T=(-1.*B+sqrt(B**2-4.*A*(C-MeltFracCrockN2(I,J))))/(2.*A)
+
+!MeltFracCrockN3(I,J)=MeltFracCrockN2(I,J)+relax*FSLOPECROCKER*(newA(I,J)-INVFUNC_T)
+
+MeltFracCrockN3(I,J,K)=MeltFracCrockN2(I,J,K)+relax*FSLOPECROCKER*(newA(I,J,K)-(MeltFracCrockN2(I,J,K)&
+  *(MeltCrock-FreezeCrock)+FreezeCrock))
+
+   IF (MeltFracCrockN3(I,J,K)>1.0) Then
+    MeltFracCrockN3(I,J,K)=1.0
+   END IF
+   IF (MeltFracCrockN3(I,J,K)<0.0) Then
+       MeltFracCrockN3(I,J,K)=0.0
+   END IF
+    ELSE IF (newA(I,J,K)>=MeltCrock)Then
+     MeltFracCrockN3(I,J,K)=1.0
+   END IF
+END IF
+
+
+
+   IF (MaterialSwitch(I,J,K)==2) Then
+    IF (newA(I,J,K)<=FreezeDike) Then
+     MeltFracDikeN3(I,J,K)=0.0
+   ElSE IF (newA(I,J,K)>=FreezeDike .and. newA(I,J,K)<MeltDike) Then
+!DUFEK CHECKPOINT
+
+    IF (newA(I,J,K)>=DikeInterv(1) .and. newA(I,J,K)<DikeInterv(2)) THEN
+    FSLOPEDIKER=fslopedike(1)
+        MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(1))+DikeInterv(1)))
+
+!((MeltFracDikeN2(I,J)&
+           !  +.379)/6.536e-4))
+
+
+      ELSE IF (newA(I,J,K)>=DikeInterv(2) .and. newA(I,J,K)<DikeInterv(3)) THEN
+        FSLOPEDIKER=fslopedike(2)
+         MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(2))+DikeInterv(2)))
+
+!((MeltFracDikeN2(I,J)&
+             !+1.778)/2.0e-3))
+
+
+       ELSE IF (newA(I,J,K)>=DikeInterv(3) .and. newA(I,J,K)<DikeInterv(4)) THEN
+        FSLOPEDIKER=fslopedike(3)
+         MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(3))+DikeInterv(3)))
+
+!((MeltFracDikeN2(I,J)&
+!             +3.9655)/3.879e-3))
+
+       ELSE IF (newA(I,J,K)>=DikeInterv(4) .and. newA(I,J,K)<MeltDike) THEN
+        FSLOPEDIKER=fslopedike(4)
+         MeltFracDikeN3(I,J,K)=MeltFracDikeN2(I,J,K)+relax*FSLOPEDIKER*(newA(I,J,K)-((1./FSLOPEDIKER)*(MeltFracDikeN2(I,J,K)-DikeMF(4))+DikeInterv(4)))
+
+
+      END IF
+
+
+!MeltFracDikeN3(I,J)=MeltFracDikeN2(I,J)+relax*FSLOPEDIKER*(newA(I,J)-(MeltFracDikeN2(I,J)*(MeltDike-FreezeDike)+FreezeDike))
+   !MeltFracCrockN3(I,J)=MeltFracDikeN2(I,J)+relax*((newA(I,J)-FreezeDike)/(MeltDike-FreezeDike)-MeltFracDikeN2(I,J))
+ IF (MeltFracDikeN3(I,J,K)>1.0) THEN
+     MeltFracDikeN3(I,J,K)=1.0
+  END IF
+   IF (MeltFracDikeN3(I,J,K)<0.0) THEN
+    MeltFracDikeN3(I,J,K)=0.0
+   END IF
+ELSE IF (newA(I,J,K)>=MeltDike)Then
+    MeltFracDikeN3(I,J,K)=1.0
+   END IF
+
+  END IF
+ END DO
+!K Loop
+
+MeltDifference=0.0
+
+DO K=2,BASE_Z-1
+  If(MaterialSwitch(I,J,K)/=2 ) THEN
+   MeltDifference=MeltDifference+abs(MeltFracCrockN3(I,J,K)-MeltFracCrockN2(I,J,K))
+  ELSE IF (MaterialSwitch(I,J,K)==2) THEN
+   MeltDifference=MeltDifference+abs(MeltFracDikeN3(I,J,K)-MeltFracDikeN2(I,J,K))
+  END IF
+ END DO
+
+
+DO K=2,BASE_Z-1
+  MeltFracDikeN2(I,J,K)=relax1*MeltFracDikeN3(I,J,K)+(1.0-relax1)*MeltFracDikeN2(I,J,K)
+  MeltFracCrockN2(I,J,K)=relax1*MeltFracCrockN3(I,J,K)+(1.0-relax1)*MeltFracCrockN2(I,J,K)
+ END DO
+
+END DO
+
+!END MELT DIFFERENCE MeltDifference
+
+
+!write(12123,*) 1,ZZ,MeltDifference
+
+
+IF (ConvergeCheck>1.0) THEN
+write(501,*) ConvergeCheck
+END IF
+
+
+
+END DO
+!the I loop
+
+END DO
+!the J loop
+
+END IF
+
+
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+  IF (MaterialSwitch(I,J,K)/=2) THEN            
+      kcond(I,J,K)=MeltFracCrockN1(I,J,K)*k_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*k_solid_crock
+     cp(I,J,K)=MeltFracCrockN1(I,J,K)*cp_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*cp_solid_crock
+
+     density(I,J,K)=MeltFracCrockN1(I,J,K)*rho_melt_crock+(1.0-MeltFracCrockN1(I,J,K))*rho_solid_crock
+  ELSE IF (MaterialSwitch(I,J,K)==2) THEN
+  kcond(I,J,K)=MeltFracCrockN1(I,J,K)*k_melt_basalt+(1.0-MeltFracCrockN1(I,J,K))*k_solid_basalt
+     cp(I,J,K)=MeltFracCrockN1(I,J,K)*cp_melt_basalt+(1.0-MeltFracCrockN1(I,J,K))*cp_solid_basalt
+
+     density(I,J,K)=MeltFracDikeN1(I,J,K)*rho_melt_basalt+(1.0-MeltFracDikeN1(I,J,K))*rho_solid_basalt
+
+ END IF
+
+ END DO
+END DO
+END DO
+
+
+DO I=2,BASE_X-1
+DO J=2, BASE_Y-1
+DO K=2,BASE_Z-1
+oldA(I,J,K)=newA(I,J,K)
+TEMP(I,J,K)=newA(I,J,K)
+
+IF (MeltFracDikeN2(I,J,K)<0.0) THEN
+   MeltFracDikeN2(I,J,K)=0.0
+  ELSE IF (MeltFracDikeN2(I,J,K)>1.0) THEN
+   MeltFracDikeN2(I,J,K)=1.0
+  END IF
+
+
+  MeltFracDikeN1(I,J,K)=MeltFracDikeN2(I,J,K)
+  MeltFracCrockN1(I,J,K)=MeltFracCrockN2(I,J,K)
+ END DO
+END DO
+
+END DO
+
+
+summelt=0.0
+summeltmafic=0.0
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+  summelt= MeltFracCrockN2(I,J,K)+summelt
+  summeltmafic=MeltFracDikeN2(I,J,K)+summeltmafic
+ END DO
+END DO
+END DO
+
+
+
+
+summelt=0.0
+summeltmafic=0.0
+sum=0.0
+!Volume change protocol
+
+!DO I=1,BASE_X
+! DO J=1,BASE_Y
+!  DO K=1,BASE_Z
+!   VOLUMECHANGE(I,J,K)=(DENSITYOLD(I,J,K)*((1./DENSITYOLD(I,J,K))-(1./DENSITY(I,J,K))))/DeltaTime
+!Change in volume / volume time
+!DENSITYOLD(I,J,K)=DENSITY(I,J,K)
+
+! END DO
+!END DO
+!END DO
+
+
+
+!write(501,*) ConvergeCheck !summeltmafic
+write(502,*) FLUX
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+
+  IF (MAXTEMP(I,J,K)<newA(I,J,K)) THEN
+    MAXTEMP(I,J,K)=newA(I,J,K)
+  END IF
+ END DO
+END DO
+END DO
+
+
+
+IF(ZZ==TIMESTEPS/2) THEN
+WRITE(1001,300) MAXTEMP
+END IF
+
+write(1144,200)ZZ
+
+!if (int(ZZ)==71) then
+!write(113,200)MaterialSwitch_B
+!end if
+
+!if (int(ZZ)==72) then
+!write(114,200)MaterialSwitch_B
+!end if
+
+!if (ZZ==73) then
+!write(115,200)MaterialSwitch_B
+!end if
+
+
+!Update boundaries
+TOTAL_TEMP=0.0
+COUNTER=0.0
+DO J=1,BASE_Y
+ 
+ 
+ DO I=1,BASE_X
+  DO K=1,BASE_Z 
+   !Compute average
+   TOTAL_TEMP=TEMP(I,J,K)+TOTAL_TEMP
+   COUNTER=COUNTER+1.0
+  END DO
+ END DO
+
+W(J)=TOTAL_TEMP/COUNTER
+E(J)=TOTAL_TEMP/COUNTER
+
+COUNTER=0.0
+TOTAL_TEMP=0.0
+write(999909,*) W(J)
+END DO
+
+
+
+
+
+
+
+
+
+
+
+if (mod(ZZ,FREQ_WRITEOUT)==0.0) then
+write(11) newA
+!write(111,200) MaterialSwitch_B
+!write(601,300) density
+!write(602,300) cp
+!write(603,300) k
+
+
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+
+
+  IF (MaterialSwitch(I,J,K)/=2) Then     ! JOE
+   MeltFracCrust(I,J,K)=MeltFracCrockN2(I,J,K)
+   MeltFracMafic(I,J,K)=0.0
+   TOTAL_MELT(I,J,K)=MeltFracCrockN2(I,J,K)
+ ELSE IF (MaterialSwitch(I,J,K)==2) THEN
+  MeltFracCrust(I,J,K)=0.0
+  MeltFracMafic(I,J,K)=MeltFracDikeN2(I,J,K)
+  TOTAL_MELT(I,J,K)=MeltFracDikeN2(I,J,K)
+ END IF
+ END DO
+END DO
+END DO
+
+
+
+
+
+  !
+
+! Dif = ZrDiffCalc(newA(I,J,K),MELT_H2O(I,J,K))
+  ! V = ZrcV(Dif,Zr(1),Zr(2),Rd,s)
+  ! W=V
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+!write(61,300) MeltFracMafic
+!write(161,300) MeltFracCrust
+!write(781,300) density
+
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+
+
+
+
+
+
+!11 is dacitic melt nominally
+IF (MaterialSwitch(I,J,K)==11) Then 
+!composition SiO2, Al2O3, CaO, Na2O, K2O 
+x=MeltFracCrust(I,J,K)
+! MELT_SIO2(I,J,K)=-3.57307E2*(x**5) + 9.04717E2*(x**4) - 7.50920E2*(x**3) + 2.05081E2*(x**2)- 1.22826E1*(x) + 7.13468E1
+
+MELT_SIO2(I,J,K)=-1.597E1*(x**3) + 1.939E1*(x**2) - 7.723E0*(x) + 7.510E+01
+
+MELT_AL2O3(I,J,K)= 2.4193E2*(x**5) - 6.4111E2*(x**4) + 6.0231E2*(x**3) - 2.3064E2*(x**2) +3.4075E1*x + 1.0585E1
+MELT_CAO(I,J,K)= 1.8643E1*(x**4) - 3.5739E1*(x**3) + 2.0737E1*(x**2) - 7.4914E-1*(x) +2.6444E0
+MELT_NA2O(I,J,K)=-3.1672E2*(x**6) + 1.0460E3*(x**5) - 1.2975E3*(x**4) + 7.3268E2*(x**3) -1.7833E2*(x**2) + 1.7225E1*(x) + 9.5350E-1
+MELT_K2O(I,J,K)= 7.2120E1*(x**5) - 2.4321E2*(x**4) + 3.1251E2*(x**3) - 1.8403E2*(x**2) +4.1550E1*(x) + 3.3585E0
+MELT_H2O(I,J,K)=2.1773E2*(x**6) - 7.8801E2*(x**5) + 1.14056E3*(x**4) - 8.44526E2*(x**3) +3.40027E2*(x**2) - 7.31031E1*(x) + 8.9835E0
+
+!density(I,J,K)=6.184E0*(x**3) + 5.891E1*(x**2) - 3.026E2*(x) + 2.739E3
+IF (x>0.455) THEN
+density(I,J,K)= 1000.*(1.022E-1*(x**2) + 7.226E-2*(x) + 2.019E0)
+ELSE IF (x>0.0 .and. x<.455) THEN
+density(I,J,K)= 1000.*(1.3685E0*(x**2) - 5.5725E-1*(x) + 1.7798E0)
+ELSE
+density(I,J,K)=2700.0
+END IF
+
+
+x=MELT_SIO2(I,J,K)
+xx=MeltFracCrust(I,J,K)
+IF (x<52.0) x=52.0
+IF (x>80.0) x=80.0
+!MELT_ZR(I,J,K)=-4.723E-2*(x**3) + 8.282E0*(x**2) - 4.722E2*(x) + 8.907E3+(1.0-xx)*27.4
+MELT_ZR(I,J,K)=9.88*(x) - 403.+(1.-xx)*27.4
+END IF
+
+
+!6 Is crustal melt of neovolcanic material in the shallow crust
+IF (MaterialSwitch(I,J,K)==6) Then
+!composition SiO2, Al2O3, CaO, Na2O, K2O 
+x=MeltFracCrust(I,J,K)
+ MELT_SIO2(I,J,K)= -1.0598E2*(x**4) + 2.7891E2*(x**3) - 2.4133E2*(x**2) + 6.2648E1*(x) +6.6716E1
+
+MELT_AL2O3(I,J,K)= -1.6000E1*(x**3) + 3.0765E1*(x**2) - 1.0853E1*(x) + 1.2739E1
+MELT_CAO(I,J,K)= 3.417E0*(x**3) - 3.758E0*(x**2) + 1.901E0*(x) + 3.937E0
+MELT_NA2O(I,J,K)=-1.651E2*(x**6) + 5.168E2*(x**5) - 5.925E2*(x**4) + 2.915E2*(x**3) -5.203E1*(x**2) + 4.473E0*(x) + 1.048E0
+MELT_K2O(I,J,K)= 3.809E0*(x**2) - 9.230E0*(x) + 7.709E0
+MELT_H2O(I,J,K)=.01
+density(I,J,K)=1000.0*(3.679E2*(x**2) - 2.565E-1*(x) + 2.743E0)
+MELT_ZR(I,J,K)=183.0+(1-x)*7.2
+END IF
+
+!5 Is crustal melt of metavolcanic material in the mid crust
+IF (MaterialSwitch(I,J,K)==5) Then
+!composition SiO2, Al2O3, CaO, Na2O, K2O 
+x=MeltFracCrust(I,J,K)
+ MELT_SIO2(I,J,K)= 3.1849E1*(x**4) - 5.6142E1*(x**3) + 9.3723E0*(x**2) + 1.6973E1*x +6.5233E1
+
+MELT_AL2O3(I,J,K)= 5.6028E1*(x**4) - 1.3797E2*(x**3) + 1.3548E2*(x**2) - 6.0783E1*(x) +2.4639E1
+MELT_CAO(I,J,K)= -1.3987E1*(x**4) + 3.6531E1*(x**3) - 3.0199E1*(x**2) + 9.6460E0*(x) +1.1147E0
+MELT_NA2O(I,J,K)= 1.4855E-1*(x**3) + 1.1277E0*(x**2) + 2.7080E0*(x) + 1.7834E-1
+MELT_K2O(I,J,K)= -2.9663E1*(x**4) + 7.6790E1*(x**3) - 6.7135E1*(x**2) + 1.7774E1*(x) +5.4519E0
+MELT_H2O(I,J,K)=.01
+density(I,J,K)=1000.0*(1.607E-2*(x**2) - 2.10E-1*(x) + 2.646E0)
+MELT_ZR(I,J,K)=157.+(1-x)*18.1
+END IF
+
+
+!4 Is subvolcanic plutons
+IF (MaterialSwitch(I,J,K)==4) Then
+!composition SiO2, Al2O3, CaO, Na2O, K2O 
+x=MeltFracCrust(I,J,K)
+ MELT_SIO2(I,J,K)= 8.03476E1*(x**4) - 2.14462E2*(x**3) + 1.96142E2*(x**2) - 6.63058E1*x+ 5.45678E1
+MELT_AL2O3(I,J,K)=3.88433E1*(x**4) - 9.29831E1*(x**3) + 7.84985E1*(x**2) - 2.44231E1*x +1.85582E1
+MELT_CAO(I,J,K)= -1.45231E2*(x**6) + 4.94280E2*(x**5) - 6.45440E2*(x**4) + 3.99197E2*(x**3)- 1.17465E2*(x**2) + 1.91820E1*x + 5.33649E0
+MELT_NA2O(I,J,K)= 6.91042E1*(x**5) - 1.93472E2*(x**4) + 2.01393E2*(x**3) - 9.51958E1*(x**2)+ 1.77102E1*x + 3.80689E0
+MELT_K2O(I,J,K)= -1.05442E2*(x**5) + 3.03724E2*(x**4) - 3.29817E2*(x**3) + 1.69161E2*(x**2)- 4.29081E1*(x) + 5.71695E0
+MELT_H2O(I,J,K)=.01
+density(I,J,K)=1000.*(-2.355E-2*(x**2) - 1.949E-1*(x) + 2.914E0)
+MELT_ZR(I,J,K)=35.+(1-x)*12.1
+END IF
+
+!3 Is  lC basement plutons
+IF (MaterialSwitch(I,J,K)==3) Then
+!composition SiO2, Al2O3, CaO, Na2O, K2O 
+x=MeltFracCrust(I,J,K)
+ MELT_SIO2(I,J,K)=-1.0455E2*(x**4) + 2.1202E2*(x**3) - 1.2396E2*(x**2) + 4.1144E0*(x) +6.4843E1 
+MELT_AL2O3(I,J,K)=5.7829E1*(x**4) - 1.2997E2*(x**3) + 7.6751E1*(x**2) - 4.0202E0*(x) +1.6396E1
+MELT_CAO(I,J,K)= -3.9345E1*(x**4) + 8.9761E1*(x**3) - 6.8531E1*(x**2) + 2.5043E1*(x) +2.9658E0
+MELT_NA2O(I,J,K)= 1.8908E1*(x**4) - 3.7544E1*(x**3) + 1.6484E1*(x**2) + 3.5347E0*(x) +1.3152E0
+MELT_K2O(I,J,K)= 2.7898E1*(x**4) - 7.1970E1*(x**3) + 6.7849E1*(x**2) - 2.9151E1*(x) +6.0633E0
+MELT_H2O(I,J,K)=.01
+density(I,J,K)=1000.0*(4.257E-1*(x**4) - 1.921E0*(x**3) + 2.209E0*(x**2) - 1.095E0*(x) + 3.135E0)
+MELT_ZR(I,J,K)=151.+(1-x)*12.4
+END IF
+
+
+!1 Is lower crust
+IF (MaterialSwitch(I,J,K)==1) Then
+!composition SiO2, Al2O3, CaO, Na2O, K2O 
+x=MeltFracCrust(I,J,K)
+ MELT_SIO2(I,J,K)=-2.9015E1*(x**4)+ 1.3815E2*(x**3) - 1.6781E2*(x**2) + 4.9394E1*(x) +6.3003E1 
+MELT_AL2O3(I,J,K)=1.8508E1*(x**4) - 7.3557E1*(x**3) + 7.0523E1*(x**2) - 1.5413E1*(x) +1.6589E1
+MELT_CAO(I,J,K)=-3.9742E1*(x**4) + 7.1276E1*(x**3) - 3.7553E1*(x**2) + 1.2519E1*(x) +3.1230E0
+MELT_NA2O(I,J,K)= 1.9422E1*(x**4) - 2.6906E1*(x**3) - 2.4545E0*(x**2) + 1.1034E1*(x) +1.7173E0
+MELT_K2O(I,J,K)= 2.5804E1*(x**4) - 6.6999E1*(x**3) + 6.4173E1*(x**2) - 2.8456E1*(x) +6.1668E0
+MELT_H2O(I,J,K)=.01
+density(I,J,K)=1000.0*(-3.107E0*(x**5) + 1.093E1*(x**4) - 1.288E1*(x**3) + 5.658E0*(x**2) - 9.759E-1*(x) + 3.174E0)
+MELT_ZR(I,J,K)=68.+(1-x)*4.5
+END IF
+
+
+
+!2 Is mantle derived intrusions
+IF (MaterialSwitch(I,J,K)==2) Then
+!composition SiO2, Al2O3, CaO, Na2O, K2O 
+x=MeltFracMafic(I,J,K)
+! MELT_SIO2(I,J,K)=-1.1230E2*(x**4) + 3.1314E2*(x**3) - 2.9241E2*(x**2) + 9.3832E1*(x) +4.6147E1
+MELT_SIO2(I,J,K)=6.8174E1*(x**4) - 1.1230E2*(x**3) + 5.5365E1*(x**2) - 2.0546E1*(x) + 5.8552E1
+
+MELT_AL2O3(I,J,K)=-1.5512E1*(x**3) + 1.4350E1*(x**2) - 6.0533E0*(x) + 2.4745E1
+MELT_CAO(I,J,K)= -1.5893E1*(x**4) + 2.5235E1*(x**3) - 1.0917E1*(x**2) + 1.1121E1*(x) +1.6829E0
+MELT_NA2O(I,J,K)= -3.6120E1*(x**4) + 9.5147E1*(x**3) - 8.7389E1*(x**2) + 2.8420E1*(x) +2.3545E0
+MELT_K2O(I,J,K)= 7.2262E0*(x**4) - 2.1008E1*(x**3) + 2.3068E1*(x**2) - 1.1954E1*(x) +2.9731E0
+MELT_H2O(I,J,K)=-3.5363E1*(x**5) + 1.0582E2*(x**4) - 1.2104E2*(x**3) + 6.6449E1*(x**2) - 1.8057E1*(x) + 4.2521E0
+density(I,J,K)= 1000.*( 2.187E0*(x**4) - 4.564E0*(x**3) + 2.898E0*(x**2) - 9.230E-1*(x) +3.129E0)
+MELT_ZR(I,J,K)=100.0+(1.0-x)*20.5
+END IF
+
+
+
+IF ((MeltFracCrust(I,J,K)+MeltFracMafic(I,J,K))<.001) THEN
+ MELT_SIO2(I,J,K)= 0.0
+ MELT_AL2O3(I,J,K)= 0.0
+ MELT_CAO(I,J,K)= 0.0
+ MELT_NA2O(I,J,K)= 0.0
+ MELT_K2O(I,J,K)= 0.0
+ MELT_H2O(I,J,K)=0.0
+END IF
+
+END DO
+ END DO
+END DO
+
+!Calculat Volume Change
+!Volume change protocol
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+   VOLUMECHANGE(I,J,K)=(DENSITYOLD(I,J,K)*((1./DENSITYOLD(I,J,K))-(1./DENSITY(I,J,K))))/DeltaTime
+!Change in volume / volume time
+DENSITYOLD(I,J,K)=DENSITY(I,J,K)
+
+!Calculate equivalent pressure changes
+IF (MaterialSwitch(I,J,K)==2) Then
+x=MeltFracMafic(I,J,K)
+ELSE
+x=MeltFracCrust(I,J,K)
+END IF
+
+COMPRESS(I,J,K)=(4.18148895E-16)*(x**2)-(2.66604765E-15)*x - 7.69108638E-16
+
+PRESSURECHANGE(I,J,K)=VOLUMECHANGE(I,J,K)/COMPRESS(I,J,K)  !Units of Pa/m^3s
+
+if (x>.24) then
+ MU(I,J,K)= ((1.505874E1)*(x**2) - (2.810814E1)*(x) + 1.659834E1)
+else
+MU(I,J,K)=20.
+end if
+
+
+
+ END DO
+END DO
+END DO
+
+
+
+
+
+
+!Calculate static pressure
+
+DO I=1,BASE_X
+ DO K=1,BASE_Z
+  DO J=1,BASE_Y
+  
+
+SUM=0.0
+  DO JJ=J,BASE_Y
+    SUM=SUM+DENSITY(I,JJ,K)*DY
+  END DO
+    PRESSURE(I,J,K)=SUM*9.81
+  END DO
+ END DO
+END DO
+
+
+
+!!!!!!!!!!!Module for Zr !!!!!
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+Zrsat(I,J,K)=0.0
+
+!Set up a test for first K nodes
+!IF (K>0 .and. K<10) THEN
+!TOTAL_MELT(I,J,K)=0.75
+!newA(I,J,K)=899.
+!MELT_SIO2(I,J,K)=69.06
+!MELT_AL2O3(I,J,K)=13.76
+!MELT_CAO(I,J,K)=2.12
+!MELT_NA2O(I,J,K)=4.44
+!MELT_K2O(I,J,K)=3.79
+!MELT_H2O(I,J,K)=4.05
+!END IF
+
+   IF(TOTAL_MELT(I,J,K)>0.001 .and. MELT_SIO2(I,J,K)>55.0) THEN
+  
+     MajOx=(/MELT_SIO2(I,J,K),MELT_AL2O3(I,J,K),MELT_CAO(I,J,K),MELT_NA2O(I,J,K),MELT_K2O(I,J,K)/)
+     tempproxy=newA(I,J,K)+273.0
+     Mmass = (/60.0855,101.963,56.078,61.979,94.196/) 
+     ncat = (/1,2,1,2,2/)
+     sum=0.0
+     DO CC=1,5
+      MajOxAt(CC)=MajOx(CC)/Mmass(CC)
+      sum=MajOxAt(CC)+sum
+     END DO
+      
+      DO C=1,5
+      MajOxAt(CC)=(MajOxAt(CC)*ncat(CC))/sum
+     END DO
+     
+     MM= (2*MajOxAt(3)+MajOxAt(4)+MajOxAt(5))/(MajOxAt(1)*MajOxAt(2))
+      Zrsat(I,J,K)=  490000./exp((10108./tempproxy)+1.16*(MM-1.)-1.48)!calculate melt Zr [ppm] atsaturation
+! Calculate diffusion and growth parameters
+ZrsatDif(I,J,K)=MELT_ZR(I,J,K)-Zrsat(I,J,K)
+    END IF
+
+   END DO
+  END DO
+END DO
+
+
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  DO K=1,BASE_Z
+   Melt1(I,J,K)=0.0
+   Melt2(I,J,K)=0.0
+   Melt3(I,J,K)=0.0
+   Melt4(I,J,K)=0.0
+   Melt5(I,J,K)=0.0
+   Melt6(I,J,K)=0.0
+   Melt11(I,J,K)=0.0
+
+ IF (MaterialSwitch(I,J,K)==1) Then
+  Melt1(I,J,K)=MeltFracCrockN2(I,J,K)
+ END IF
+
+  IF (MaterialSwitch(I,J,K)==2) Then
+  Melt2(I,J,K)=MeltFracDikeN2(I,J,K)
+ END IF
+
+ IF (MaterialSwitch(I,J,K)==3) Then
+  Melt3(I,J,K)=MeltFracCrockN2(I,J,K)
+ END IF
+
+ IF (MaterialSwitch(I,J,K)==4) Then
+  Melt4(I,J,K)=MeltFracCrockN2(I,J,K)
+ END IF
+
+ IF (MaterialSwitch(I,J,K)==5) Then
+  Melt5(I,J,K)=MeltFracCrockN2(I,J,K)
+ END IF
+
+ IF (MaterialSwitch(I,J,K)==6) Then
+  Melt6(I,J,K)=MeltFracCrockN2(I,J,K)
+ END IF
+
+ IF (MaterialSwitch(I,J,K)==11) Then
+  Melt11(I,J,K)=MeltFracCrockN2(I,J,K)
+ END IF
+
+ END DO
+END DO
+END DO
+
+
+write(211001) Melt1
+write(211002) Melt2
+write(211003) Melt3
+write(211004) Melt4
+write(211005) Melt5
+write(211006) Melt6
+write(211011) Melt11
+write(211012) TOTAL_MELT
+
+
+write(70013) VOLUMECHANGE
+write(70014) PRESSURECHANGE
+write(70015) MU
+write(49999) MELT_SIO2
+write(50000) MELT_AL2O3
+write(50001) MELT_CAO
+write(50002) MELT_NA2O
+write(50003) MELT_K2O
+write(50004) MELT_H2O
+write(70008) PRESSURE
+write(70010) DENSITY
+write(50006) MELT_ZR
+write(50005) Zrsat
+write(50007) ZrsatDif
+
+
+DO I=1,BASE_X
+ DO J=1,BASE_Y
+  K=BASE_Z/2
+MELT_SIO2_2D(I,J)= MELT_SIO2(I,J,K)
+MELT_AL2O3_2D(I,J)=MELT_AL2O3(I,J,K)
+MELT_CAO_2D(I,J)=MELT_CAO(I,J,K)
+MELT_NA2O_2D(I,J)=MELT_NA2O(I,J,K)
+MELT_K2O_2D(I,J)=MELT_K2O(I,J,K)
+MELT_H2O_2D(I,J)=MELT_H2O(I,J,K)
+MELT_TEMP_2D(I,J)=newA(I,J,K)
+MELT_FRAC_2D(I,J)=TOTAL_MELT(I,J,K)
+DENSITY_2D(I,J)=density(I,J,K)
+PRESSURE_2D(I,J)=PRESSURE(I,J,K)
+MELT_ZR_2D(I,J)=MELT_ZR(I,J,K)
+ZrsatDif_2D(I,J)=ZrsatDif(I,J,K)
+VOLUMECHANGE_2D(I,J)=VOLUMECHANGE(I,J,K)
+PRESSURECHANGE_2D(I,J)=PRESSURECHANGE(I,J,K)
+MU_2D(I,J)=MU(I,J,K)
+write(169999,301) REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY, REAL(ZZ)*deltaTime/(86400.0*365.0), MELT_SIO2(I,J,K)
+write(170000,301) REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY, REAL(ZZ)*deltaTime/(86400.0*365.0),MELT_AL2O3(I,J,K)
+write(170001,301) REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY, REAL(ZZ)*deltaTime/(86400.0*365.0),MELT_CAO(I,J,K)
+write(170002,301) REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY, REAL(ZZ)*deltaTime/(86400.0*365.0),MELT_NA2O(I,J,K)
+write(170003,301) REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY, REAL(ZZ)*deltaTime/(86400.0*365.0),MELT_K2O(I,J,K)
+write(170004,301) REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY, REAL(ZZ)*deltaTime/(86400.0*365.0),MELT_H2O(I,J,K)
+write(170005,301) REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY, REAL(ZZ)*deltaTime/(86400.0*365.0),newA(I,J,K)
+write(170006,301) REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY, REAL(ZZ)*deltaTime/(86400.0*365.0),TOTAL_MELT(I,J,K)
+write(170007,301) REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY, REAL(ZZ)*deltaTime/(86400.0*365.0),density(I,J,K)
+write(170009,301)REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY, REAL(ZZ)*deltaTime/(86400.0*365.0), PRESSURE(I,J,K)
+write(170010,301)REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY,REAL(ZZ)*deltaTime/(86400.0*365.0), VOLUMECHANGE(I,J,K)
+write(170011,301)REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY,REAL(ZZ)*deltaTime/(86400.0*365.0),PRESSURECHANGE(I,J,K)
+write(170012,301)REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY,REAL(ZZ)*deltaTime/(86400.0*365.0),MU(I,J,K)
+write(170013,302)REAL(I)*deltaX,REAL(BASE_Y-J)*deltaY,REAL(ZZ)*deltaTime/(86400.0*365.0),COMPRESS(I,J,K)
+
+
+
+END DO
+END DO
+
+write(69999) MELT_SIO2_2D
+write(70000) MELT_AL2O3_2D
+write(70001) MELT_CAO_2D
+write(70002) MELT_NA2O_2D
+write(70003) MELT_K2O_2D
+write(70004) MELT_H2O_2D
+write(70005) MELT_TEMP_2D
+write(70006) MELT_FRAC_2D
+write(70007) DENSITY_2D
+write(70009) PRESSURE_2D
+write(70011) MELT_ZR_2D
+write(70012) ZrsatDif_2D
+write(70014) VOLUMECHANGE_2D
+write(70015) PRESSURECHANGE_2D
+write(70016) MU_2D
+deptha=INT((randomL+((HEIGHT-BASE_CRUST)/(HEIGHT/BASE_Y)))/2)+1-SILL_WIDTH
+depthb=randomL-INT(SILL_WIDTH/2)
+horiza=dikelocation !+PDIKE/2
+
+
+
+END IF
+
+
+
+
+write(7991,*) S_VOLUME
+write(7992,*) M_VOLUME
+write(7993,*) (S_VOLUME/((REAL(ZZ)*deltaTime)*INJECT_WIDTHZ*INJECT_WIDTH))*86400.0*365.0
+write(7994,*) (M_VOLUME/((REAL(ZZ)*deltaTime)*INJECT_WIDTHZ*INJECT_WIDTH))*86400.0*365.0
+
+
+!--------------------------------------------------------------------------------------!
+!------------------------Record interfacial area, distance and total melt--------------!
+
+!If (mod(ZZ,5*TIMESTEPS)==0.0) Then
+
+
+TotalSMelt=0.0
+TotalMMelt=0.0
+TotalMelt1=0.0
+TotalMelt2=0.0
+TotalMelt3=0.0
+TotalMelt4=0.0
+TotalMelt5=0.0
+TotalMelt6=0.0
+TotalMelt11=0.0
+
+TotalEruptMelt1=0.0
+TotalEruptMelt2=0.0
+TotalEruptMelt3=0.0
+TotalEruptMelt4=0.0
+TotalEruptMelt5=0.0
+TotalEruptMelt6=0.0
+TotalEruptMelt11=0.0
+
+
+DO I=2,BASE_X-1
+ DO J=2,BASE_Y-1
+  DO K=2,BASE_Z-1
+ IF (MaterialSwitch(I,J,K)==1) Then 
+  TotalMelt1=TotalMelt1+MeltFracCrockN2(I,J,K)
+  IF (MeltFracCrockN2(I,J,K)>.4) THEN
+    TotalEruptMelt1=TotalEruptMelt1+MeltFracCrockN2(I,J,K)
+  END IF
+
+ END IF
+
+  IF (MaterialSwitch(I,J,K)==2) Then 
+  TotalMelt2=TotalMelt2+MeltFracDikeN2(I,J,K)
+ IF (MeltFracDikeN2(I,J,K)>.4) THEN
+    TotalEruptMelt2=TotalEruptMelt2+MeltFracDikeN2(I,J,K)
+  END IF
+
+ END IF
+
+ IF (MaterialSwitch(I,J,K)==3) Then 
+  TotalMelt3=TotalMelt3+MeltFracCrockN2(I,J,K)
+ IF (MeltFracCrockN2(I,J,K)>.4) THEN
+    TotalEruptMelt3=TotalEruptMelt3+MeltFracCrockN2(I,J,K)
+  END IF
+ END IF
+    
+ IF (MaterialSwitch(I,J,K)==4) Then
+  TotalMelt4=TotalMelt4+MeltFracCrockN2(I,J,K)
+ IF (MeltFracCrockN2(I,J,K)>.4) THEN
+    TotalEruptMelt4=TotalEruptMelt4+MeltFracCrockN2(I,J,K)
+  END IF
+
+ END IF
+
+ IF (MaterialSwitch(I,J,K)==5) Then
+  TotalMelt5=TotalMelt5+MeltFracCrockN2(I,J,K)
+ IF (MeltFracCrockN2(I,J,K)>.4) THEN
+    TotalEruptMelt5=TotalEruptMelt5+MeltFracCrockN2(I,J,K)
+  END IF
+
+ END IF
+
+ IF (MaterialSwitch(I,J,K)==6) Then
+  TotalMelt6=TotalMelt6+MeltFracCrockN2(I,J,K)
+
+ IF (MeltFracCrockN2(I,J,K)>.4) THEN
+    TotalEruptMelt6=TotalEruptMelt6+MeltFracCrockN2(I,J,K)
+  END IF
+
+ END IF
+
+ IF (MaterialSwitch(I,J,K)==11) Then
+  TotalMelt11=TotalMelt11+MeltFracCrockN2(I,J,K)
+
+ IF (MeltFracCrockN2(I,J,K)>.4) THEN
+    TotalEruptMelt11=TotalEruptMelt11+MeltFracCrockN2(I,J,K)
+  END IF
+
+ END IF
+
+ END DO
+END DO
+END DO
+
+write(497,*) TotalSMelt*deltaX*deltaY*deltaZ
+write(498,*) TotalMMelt*deltaX*deltaY*deltaZ
+
+
+write(111001,300) TotalMelt1*deltaX*deltaY*deltaZ
+write(111002,300) TotalMelt2*deltaX*deltaY*deltaZ
+write(111003,300) TotalMelt3*deltaX*deltaY*deltaZ
+write(111004,300) TotalMelt4*deltaX*deltaY*deltaZ
+write(111005,300) TotalMelt5*deltaX*deltaY*deltaZ
+write(111006,300) TotalMelt6*deltaX*deltaY*deltaZ
+write(111011,300) TotalMelt11*deltaX*deltaY*deltaZ
+
+
+write(311001,300) TotalEruptMelt1*deltaX*deltaY*deltaZ
+write(311002,300) TotalEruptMelt2*deltaX*deltaY*deltaZ
+write(311003,300) TotalEruptMelt3*deltaX*deltaY*deltaZ
+write(311004,300) TotalEruptMelt4*deltaX*deltaY*deltaZ
+write(311005,300) TotalEruptMelt5*deltaX*deltaY*deltaZ
+write(311006,300) TotalEruptMelt6*deltaX*deltaY*deltaZ
+write(311011,300) TotalEruptMelt11*deltaX*deltaY*deltaZ
+
+write(400001,300) kcond(BASE_X/2,BASE_Y,BASE_Z/2)*(newA(BASE_X/2,BASE_Y-3,BASE_Z/2)-newA(BASE_X/2,BASE_Y-2,BASE_Z/2))/DeltaY
+
+!write(506,*) AreaInterface
+
+!END IF
+
+
+
+END DO
+! end of time loops (ZZ loop)
+
+Volume_flux_avg=Volume/(REAL(TIMESTEPS)*DeltaTime/(86400.*365.))
+
+write(11011,300) Volume_flux_avg
+!close(501)
+!close(504)
+!close(505)
+!close(506)
+
+
+!DO I=1,BASE_X
+! DO J=1,BASE_Y
+   write(9999,300) MAXTEMP
+! END DO
+!END DO
+
+
+call date_and_time (date,time2,zone,time_array2)
+
+ELLAPSED_TIME=REAL(time_array2(3)-time_array(3))*24.*60.*60.+REAL(time_array2(5)-time_array(5))*60.*60.+REAL(time_array2(6)-time_array(6))*60.+REAL(time_array2(7)-time_array(7))
+
+WRITE(40000,300) ELLAPSED_TIME
+
+
+
+100 FORMAT(1000F10.4)
+200 FORMAT(I8)
+300 FORMAT(1F40.15)
+301 FORMAT(4F40.15)
+302 FORMAT(4F40.20)
+400 FORMAT(A30)
+
+CONTAINS
+
+REAL FUNCTION ZrsatCalc(MajOx,T) !MajOx = [SiO2, Al2O3, CaO, Na2O, K2O]
+    REAL :: MajOx(5), Mmass(5) = (/60.0855, 101.963, 56.078, 61.979, 94.196/), ncat(5) = (/1, 2, 1, 2, 2/), MajOxAt(5),M,t
+    REAL:: sumMajOx
+    INTEGER:: i
+sumMajOx=0.0
+    DO i=1,5
+     sumMajOx=MajOx(i)/Mmass(i)+SumMajOx
+    END DO
+!write(210000,*) sumMajOx
+
+    DO i=1,5
+    MajOxAt(i) = ((MajOx(i)/MMass(i))*ncat(i)/sumMajOx) !calculate atomic proportions from oxide data
+    END DO
+
+!write(210000,*) MajOxAt
+
+! M parameter for saturation calc. M = (2*Ca+Na+K)/(Si*Al)
+
+    M = (2*MajOxAt(3)+MajOxAt(4)+MajOxAt(5))/(MajOxAt(1)+MajOxAt(2))
+
+!write(210000,*) M
+
+!Zr concentration [ppm] for zircon saturation (Watson and Harrison 1983
+    ZrsatCalc = 490000/exp((10108./T)+1.16*(M-1)-1.48)
+end FUNCTION ZrsatCalc
+
+FUNCTION ran2(idum)
+INTEGER:: idum, IM1,IM2,IMM1,IA1,IA2,IQ1,IQ2,IR1,IR2,NDIV,NTAB
+DOUBLE PRECISION:: ran2, AM,EPS,RNMX
+PARAMETER (IM1=2147483563, IM2=2147483399, AM=1./IM1,IMM1=IM1-1,IA1=40014, IA2=40692, IQ1=53668, IQ2=52774,IR1=12211,IR2=3791)
+PARAMETER ( NTAB=32,NDIV=1+IMM1/NTAB,EPS=1.2e-7,RNMX=1.-EPS)
+
+INTEGER::idum2,j,k,iv(NTAB),iy
+SAVE iv,iy,idum2
+DATA idum2/123456789/,iv/NTAB*0/,iy/0/
+
+!Long period (>2e18) random number generator of L'Ecuyer with Bays-Durham
+!shuffle and added safeguards.  Returns a uniform deviate between 0 and 1
+!(exclusive of the endpoint values)  Call with iduma negative integer to initi$!thereafter do not alter 
+!idum between successive deviates in a sequence. RNMX $!approximate the largest floating value that is 
+!less than 1.
+!
+
+
+if (idum.le.0) then
+  idum=max(-idum,1)
+  idum2=idum
+ DO j=NTAB+8,1,-1
+  k=idum/IQ1
+  idum=IA1*(idum-k*IQ1)-k*IR1
+  if (idum.lt.0) idum=idum+IM1
+  if (j.le.NTAb) iv(j)=idum
+ ENDDO
+  iy=iv(1)
+endif
+
+k=idum/IQ1
+idum=IA1*(idum-k*IQ1)-K*IR1
+if (idum.lt.0) idum=idum+IM1
+k=idum2/IQ2
+idum2=IA2*(idum2-k*IQ2)-k*IR2
+if (idum2.lt.0) idum2=idum2+IM2
+j=1+iy/NDIV
+iy=iv(j)-idum2
+iv(j)=idum
+if(iy.lt.1)iy=iy+IMM1
+ran2=min(AM*iy,RNMX)
+return
+END FUNCTION
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+END PROGRAM
+
+
+
+
+
+
+
+Subroutine DikeWriter(rand1,rand2,rand3,rand4,BASE,DikeWidth,DikeTemp,oldA,newA,Temp,MaterialSwitch)
+
+INTEGER::DikeWidth,rand1,rand2,rand3,rand4,BASE
+REAL::DikeTemp
+REAL::oldA(1:BASE,1:BASE),newA(1:BASE,1:BASE),Temp(1:BASE,1:BASE)
+INTEGER:: MaterialSwitch(1:BASE,1:BASE)
+
+!
+!
+
+INTEGER::basestart,baseelement,edgestart,edge,elementstarter
+INTEGER::edgeelement, Widther,I,J,RandomL,X1,X2,Y1,Y2
+
+REAL:: SLOPE,Yintercept
+
+
+rand1=rand1-3
+rand2=rand2-2
+rand3=rand3-2
+rand4=rand4-101
+
+basestart=ran2(rand1)
+baseelement=int(Base*basestart)
+
+!Pick another Edge Randomly
+edgestart=ran2(rand2)
+edgestart=(Base*edgestart-1)
+edge=int(edgestart/33)
+!Pick element on the edge
+elementstarter=ran2(rand3)
+edgeelement=int(Base*elementstarter)
+!determine slope
+Y1=baseelement
+X1=1
+
+ If (edge==0) Then  !this corresponds to left hand side
+   Y2=1
+   X2=edgeelement
+ ElSE IF (edge==1) Then   !this corresponds to the top
+   Y2=edgeelement
+   X2=Base
+ ELSE IF (edge==2) Then   !this corresponds to right hand side
+   Y2=Base
+   X2=edgeelement
+ END IF
+
+
+SLOPE=(REAL(X2)-REAL(X1))/(REAL(Y2)-REAL(Y1))
+
+Yintercept=X1-SLOPE*Y1
+!Now "Draw in ELEMENTS"
+randomL=0
+
+ IF (abs(SLOPE)>=1) THEN
+  !randomL=X2*ran2(rand4)
+  DO J=X1,X2-randomL
+  MaterialSwitch(int((J-Yintercept)/SLOPE),J)=2
+  oldA(int((J-Yintercept)/SLOPE),J)=DikeTemp
+  newA(int((J-Yintercept)/SLOPE),J)=DikeTemp
+  Temp(int((J-Yintercept)/SLOPE),J)=DikeTemp
+  DO Widther=1,DikeWidth
+   IF (int((J-Yintercept)/SLOPE)-(Widther-1)>0)Then
+    MaterialSwitch(int((J-Yintercept)/SLOPE)-(Widther-1),J)=2
+    oldA(int((J-Yintercept)/SLOPE)-(Widther-1),J)=DikeTemp
+    newA(int((J-Yintercept)/SLOPE)-(Widther-1),J)=DikeTemp
+    Temp(int((J-Yintercept)/SLOPE)-(Widther-1),J)=DikeTemp
+   END If
+   IF (int((J-Yintercept)/SLOPE)+(Widther-1)<Base) Then
+    MaterialSwitch(int((J-Yintercept)/SLOPE)+(Widther-1),J)=2
+    oldA(int((J-Yintercept)/SLOPE)+(Widther-1),J)=DikeTemp
+    newA(int((J-Yintercept)/SLOPE)+(Widther-1),J)=DikeTemp
+    Temp(int((J-Yintercept)/SLOPE)+(Widther-1),J)=DikeTemp
+   END IF
+ END DO
+ END DO
+ ELSE IF(abs(SLOPE)<1) THEN
+  IF (Y2>=Y1) THEN
+   randomL=0
+  ! randomL=int((Y2-Y1)*ran2(rand1))
+   DO I=Y1,Y2-randomL
+    MaterialSwitch(I,int((SLOPE*I)+Yintercept))=2
+    oldA(I,int((SLOPE*I)+Yintercept))=DikeTemp
+    newA(I,int((SLOPE*I)+Yintercept))=DikeTemp
+    Temp(I,int((SLOPE*I)+Yintercept))=DikeTemp
+   DO Widther=1,DikeWidth
+    IF (int((SLOPE*I)+Yintercept-(Widther-1))>0) Then
+      MaterialSwitch(I,int((SLOPE*I)+Yintercept-(Widther-1)))=2
+      oldA(I,int((SLOPE*I)+Yintercept-(Widther-1)))=DikeTemp
+      newA(I,int((SLOPE*I)+Yintercept-(Widther-1)))=DikeTemp
+      Temp(I,int((SLOPE*I)+Yintercept-(Widther-1)))=DikeTemp
+    END IF
+    IF (int((SLOPE*I)+Yintercept+(Widther-1))<Base) Then
+      MaterialSwitch(I,int((SLOPE*I)+Yintercept+(Widther-1)))=2
+      oldA(I,int((SLOPE*I)+Yintercept+(Widther-1)))=DikeTemp
+      newA(I,int((SLOPE*I)+Yintercept+(Widther-1)))=DikeTemp
+      Temp(I,int((SLOPE*I)+Yintercept+(Widther-1)))=DikeTemp
+    END IF
+   END DO
+   END DO
+ ELSE IF (Y1>Y2) THEN
+ ! randomL=int((Y1-Y2)*ran2(rand2))
+  DO I=Y1,Y2-randomL,-1
+  MaterialSwitch(I,int((SLOPE*I)+Yintercept))=2
+   oldA(I,int((SLOPE*I)+Yintercept))=DikeTemp
+   newA(I,int((SLOPE*I)+Yintercept))=DikeTemp
+   Temp(I,int((SLOPE*I)+Yintercept))=DikeTemp
+  Do Widther=1,DikeWidth
+    IF (int((SLOPE*I)+Yintercept-(Widther-1))>0) THEN
+    MaterialSwitch(I,int((SLOPE*I)+Yintercept-(Widther-1)))=2
+    oldA(I,int((SLOPE*I)+Yintercept-(Widther-1)))=DikeTemp
+    newA(I,int((SLOPE*I)+Yintercept-(Widther-1)))=DikeTemp
+    Temp(I,int((SLOPE*I)+Yintercept-(Widther-1)))=DikeTemp
+    END IF
+    IF (int((SLOPE*I)+Yintercept+(Widther-1))<Base) THEN
+    MaterialSwitch(I,int((SLOPE*I)+Yintercept+(Widther-1)))=2
+    oldA(I,int((SLOPE*I)+Yintercept+(Widther-1)))=DikeTemp
+    newA(I,int((SLOPE*I)+Yintercept+(Widther-1)))=DikeTemp
+    Temp(I,int((SLOPE*I)+Yintercept+(Widther-1)))=DikeTemp
+   END IF
+   END DO
+   END DO
+ END IF
+END IF
+
+CONTAINS
+
+FUNCTION ran2(idum)
+INTEGER:: idum, IM1,IM2,IMM1,IA1,IA2,IQ1,IQ2,IR1,IR2,NDIV,NTAB
+REAL:: ran2, AM,EPS,RNMX
+PARAMETER (IM1=2147483563, IM2=2147483399, AM=1./IM1,IMM1=IM1-1,IA1=40014, IA2=40692, IQ1=53668, IQ2=52774,IR1=12211,IR2=3791)
+PARAMETER ( NTAB=32,NDIV=1+IMM1/NTAB,EPS=1.2e-7,RNMX=1.-EPS)
+
+INTEGER::idum2,j,k,iv(NTAB),iy
+SAVE iv,iy,idum2
+DATA idum2/123456789/,iv/NTAB*0/,iy/0/
+
+!Long period (>2e18) random number generator of L'Ecuyer with Bays-Durham
+!shuffle and added safeguards.  Returns a uniform deviate between 0 and 1
+!(exclusive of the endpoint values)  Call with iduma negative integer to initi$!thereafter do not alter
+!idum between successive deviates in a sequence. RNMX $!approximate the largest floating value that is
+!less than 1.
+!
+
+
+if (idum.le.0) then
+  idum=max(-idum,1)
+  idum2=idum
+ DO j=NTAB+8,1,-1
+  k=idum/IQ1
+  idum=IA1*(idum-k*IQ1)-k*IR1
+  if (idum.lt.0) idum=idum+IM1
+  if (j.le.NTAb) iv(j)=idum
+ ENDDO
+  iy=iv(1)
+endif
+
+k=idum/IQ1
+idum=IA1*(idum-k*IQ1)-K*IR1
+if (idum.lt.0) idum=idum+IM1
+k=idum2/IQ2
+idum2=IA2*(idum2-k*IQ2)-k*IR2
+if (idum2.lt.0) idum2=idum2+IM2
+j=1+iy/NDIV
+iy=iv(j)-idum2
+iv(j)=idum
+if(iy.lt.1)iy=iy+IMM1
+ran2=min(AM*iy,RNMX)
+return
+END FUNCTION
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+END SUBROUTINE DikeWriter

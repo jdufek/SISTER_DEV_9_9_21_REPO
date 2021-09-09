@@ -1,0 +1,68 @@
+PROGRAM TEMP_CONVERTBIN
+IMPLICIT NONE
+
+DOUBLE PRECISION, ALLOCATABLE :: TEMP(:,:,:,:),MELT_FRACTION(:,:,:,:)
+INTEGER :: J,BASE_X,BASE_Y,BASE_Z,timesteps, I
+
+OPEN(100,FILE='MELT_FRACTION',FORM='unformatted')
+OPEN(101,FILE='TEMP',FORM='unformatted')
+!OPEN(200,FILE='TEMPCHECK_BIN',FORM='unformatted')
+!OPEN(201,FILE='TEMPCHECK_ASCII')
+OPEN(202,FILE='MF_8KM')
+OPEN(203,FILE='MF_10KM')
+OPEN(204,FILE='MF_12KM')
+
+OPEN(302,FILE='T_8KM')
+OPEN(303,FILE='T_10KM')
+OPEN(304,FILE='T_12KM')
+OPEN(305,FILE='T_PROFILE')
+
+!For temp this is 1 more than other variables because it includes the initial
+!condition
+
+timesteps=200
+BASE_X=250
+BASE_Y=300
+BASE_Z=250
+
+
+ALLOCATE(MELT_FRACTION(BASE_X,BASE_Y,BASE_Z,timesteps))
+ALLOCATE(TEMP(BASE_X,BASE_Y,BASE_Z,timesteps))
+
+DO I=1,timesteps
+ READ(100) MELT_FRACTION(:,:,:,I)
+ READ(101) TEMP(:,:,:,I)
+END DO
+
+!Do stuff here....
+
+
+!To write out identical to earlier
+!Slight modification of this can be used but the headers will be a bit different
+!in binary
+
+DO I=1,timesteps
+! WRITE(200) TEMP(:,:,:,I)
+! WRITE(201,300) TEMP(:,:,:,I)
+WRITE(202,300) MELT_FRACTION(BASE_X/2,BASE_Y-40,BASE_Z/2,I)
+WRITE(203,300) MELT_FRACTION(BASE_X/2,BASE_Y-50,BASE_Z/2,I)
+WRITE(204,300) MELT_FRACTION(BASE_X/2,BASE_Y-60,BASE_Z/2,I)
+
+WRITE(302,300) TEMP(BASE_X/2,BASE_Y-40,BASE_Z/2,I)
+WRITE(303,300) TEMP(BASE_X/2,BASE_Y-50,BASE_Z/2,I)
+WRITE(304,300) TEMP(BASE_X/2,BASE_Y-60,BASE_Z/2,I)
+
+DO J=1,BASE_Y
+WRITE(305,300) TEMP(BASE_X/2,J,BASE_Z/2,I)
+END DO
+
+END DO
+
+
+
+
+300 FORMAT(1F40.15)
+END PROGRAM
+
+
+

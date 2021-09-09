@@ -1,0 +1,83 @@
+BASE_X (INTEGER):
+250
+BASE_Y (INTEGER):
+300
+BASE_Z (INTEGER):
+250
+WIDTH (REAL,METERS):
+50000.
+HEIGHT (REAL,METERS):
+60000.
+ZWIDTH (REAL,METERS):
+50000.
+FREQUENCY (INTEGER) Set to 0 for no random intrusion, 3 - 8 for variable flux ranges currently defined.
+6
+DELTATIME (REAL, YEARS):
+100.
+TIMESTEPS (INTEGER):
+1000
+FREQUENCY OF WRITEOUT (INTEGER):
+100
+RANDOM SEED (NEGATIVE INTEGER):
+-8
+BASE CRUST (REAL, METERS):
+44000.
+Gradient (degrees/meter):
+-.050
+SILL THICKNESS (real, meters - pixels= SILL_THICKNESS/(HEIGHT/BASE_Y) ):
+1000.0
+SILL LENGTH (real, randomized, meters - pixels= SILL LENGTH/(WIDTH/BASE_X) ):
+5000.0
+PLUTONS, BASEMENT (bottom, REAL METERS)
+30000.0
+SUBVOLCANIC PLUTONS (bottom, REAL METERS)
+15000.0
+METAVOLCANICS, PLUTONS (bottom, REAL METERS)
+5000.0
+NEO-VOLCANICS, UPPER CRUST
+0.0
+INJECT WIDTH X (REAL, METERS - region at base of crust where magma intrudes)
+14000.0
+INJECT WIDTH Z  (REAL, METERS - region at base of crust where magma intrudes)
+20000.0
+TECTONIC RATE (REAL,METERS/year)
+0.0
+TECTONIC REGION (meters)
+30000.0
+DIKE WIDTH (real, meters - pixels in dike= DIKE_WIDTH/(WIDTH/BASE_X) )
+500.0
+MAX INJECT HEIGHT (distance from surface were magma is excluded)
+0.0
+SEDIMENTATION WIDTH (REAL, METERS region at to crust that volcanics are added)
+5000.0
+ERUPTIVE FLUX (REAL, meters/yr)
+0.0
+Critical melt fraction for dike propagation
+0.4
+Focus Factor (larger than 1, this is an area ratio of melt that is concentrated from a projected area on the Moho)
+1.0
+FLAG for calculating initial mush (integer) -- Set to 1 for mush calculation
+1
+Intrusion distance from western boundary, in m
+20000.0
+Intrusion width EW, in m
+10000.0
+Intrusion depth, in m
+6000.0
+Intrusion thickness, in m
+10000.0
+Intrusion distance from southern boundary, in m
+30000.0
+!Intrusion NS Width, in m
+10000.0
+Initial Mush Temperature (C)
+1000.0
+Switch for intrusion only in to mush area (using flux parameters listed above) (1 == TRUE)
+1
+Flag for temperature control (otherwise start with initial geotherm) (1==TRUE)
+0
+Flag for fully or partially constant values or fully 'random_run', (1==TRUE==random_run)
+0
+Timestep after which the run becomes random (if bigger than timesteps fully constant)
+1001
+
